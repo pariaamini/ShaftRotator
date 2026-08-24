@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-// Current operating state of the shaft rotator.
+// Current operating state of the shaft rotator
 enum SystemState {
   STATE_IDLE,
   STATE_RUNNING,
