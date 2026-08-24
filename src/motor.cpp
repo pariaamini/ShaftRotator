@@ -1,12 +1,9 @@
 #include "Motor.h"
 #include <Arduino.h>
 #include <EveryTimerB.h>
+#include "constants.h"
 
 #define pulseTimer TimerB2
-
-const int MOTOR_PUL = 9;  // Pin D9 on Arduino
-const int MOTOR_DIR = 10; // Pin D10 on Arduino
-const int MOTOR_ENA = 11; // Pin D11 on Arduino
 
 volatile bool pulseLevel = LOW;
 

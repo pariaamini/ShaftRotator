@@ -1,11 +1,6 @@
 #include "Buttons.h"
 #include <OneButton.h>
-
-// Button pin assignments
-#define PIN_PLUS_1 2           // Pin D2 on Arduino, Btn3 on PCB
-#define PIN_MINUS_1 3          // Pin D3 on Arduino, Btn2 on PCB
-#define PIN_JOG 4              // Pin D4 on Arduino, Btn1 on PCB
-#define PIN_START_PAUSE_STOP 5 // Pin D5 on Arduino, Btn4 on PCB
+#include "constants.h"
 
 OneButton buttonUp(PIN_PLUS_1, true);            // buttonUp -> +1 Rot Button
 OneButton buttonDown(PIN_MINUS_1, true);         // buttonDown -> -1 Rot Button
