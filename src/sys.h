@@ -3,14 +3,16 @@
 #include <Arduino.h>
 
 // Current operating state of the shaft rotator.
-enum SystemState {
+enum SystemState
+{
     STATE_IDLE,
     STATE_RUNNING,
     STATE_JOG
 };
 
 // Actions triggered by buttons.
-enum Event {
+enum Event
+{
     EVT_INC_1,
     EVT_DEC_1,
     EVT_START_PAUSE,
@@ -20,7 +22,8 @@ enum Event {
 };
 
 // Current motor operating mode.
-enum MotorMode {
+enum MotorMode
+{
     MODE_STOPPED,
     MODE_RUN,
     MODE_JOG
