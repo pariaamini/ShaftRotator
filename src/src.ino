@@ -1,12 +1,15 @@
 #include "motor.h"
 #include "buttons.h"
 
-void setup() {
+void setup()
+{
   setupButtons();
   setupMotor();
 }
 
 // Continuously runs and checks button outputs
-void loop() {
+void loop()
+{
   updateButtons();
+  updateMotor();
 }

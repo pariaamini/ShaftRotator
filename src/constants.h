@@ -21,10 +21,10 @@ constexpr uint32_t SYSTEM_GEAR_RATIO = 63;
 constexpr uint32_t PULSES_PER_OUTPUT_ROTATION =
     MOTOR_PULSES_PER_REVOLUTION * MOTOR_GEAR_RATIO * SYSTEM_GEAR_RATIO;
 
-// Motor pulse rates 
-constexpr uint32_t RUN_PULSE_RATE = 9450;
-constexpr uint32_t JOG_PULSE_RATE = 7350;
+// Motor pulse rates (/s)
 constexpr uint32_t STARTING_PULSE_RATE = 333;
+constexpr uint32_t RUN_PULSE_RATE = 9450; 
+constexpr uint32_t JOG_PULSE_RATE = 7350; 
 
 // Motor acceleration and deceleration durations
 constexpr unsigned long RUN_ACCELERATION_TIME_MS = 4000;
@@ -33,7 +33,7 @@ constexpr unsigned long JOG_ACCELERATION_TIME_MS = 1000; // should be changed?? 
 
 // Motor ramp configuration
 constexpr uint32_t RUN_DECELERATION_PULSES = 19600;
-constexpr unsigned long SPEED_UPDATE_INTERVAL_MS = 10;
+constexpr unsigned long SPEED_UPDATE_INTERVAL_MS = 10; 
 
 // Button timing
 constexpr unsigned long ROTATION_LONG_PRESS_MS = 1000;
