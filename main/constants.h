@@ -2,21 +2,18 @@
 
 #include <Arduino.h>
 
-// Jog button
+// Button pins
+constexpr uint8_t PIN_UP = 2;
+constexpr uint8_t PIN_DOWN = 3;
 constexpr uint8_t PIN_JOG = 4;
+constexpr uint8_t PIN_START_PAUSE_STOP = 5;
 
-// Motor connections
-constexpr uint8_t MOTOR_PUL = 9;
-constexpr uint8_t MOTOR_DIR = 10;
-constexpr uint8_t MOTOR_ENA = 11;
+// Allowed rotation range
+constexpr int MIN_ROTATIONS = 0;
+constexpr int MAX_ROTATIONS = 99; // not essential
 
-// Motor pulse rates, in pulses per second
-constexpr uint32_t STARTING_PULSE_RATE = 333;
-constexpr uint32_t JOG_PULSE_RATE = 7350;
-
-// Jog acceleration settings
-constexpr unsigned long JOG_ACCELERATION_TIME_MS = 1000;
-constexpr unsigned long SPEED_UPDATE_INTERVAL_MS = 10;
-
-// Button must be held this long before jogging begins
+// Button timing
+constexpr unsigned long ROTATION_LONG_PRESS_MS = 1000;
+constexpr unsigned long BUTTON_LONG_PRESS_UPDATE_MS = 10;
 constexpr unsigned long JOG_LONG_PRESS_MS = 500;
+constexpr unsigned long STOP_LONG_PRESS_MS = 3000;
