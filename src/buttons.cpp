@@ -1,16 +1,12 @@
 #include "Buttons.h"
 #include <OneButton.h>
 #include "constants.h"
-
-OneButton buttonUp(PIN_PLUS_1, true);            // buttonUp -> +1 Rot Button
-OneButton buttonDown(PIN_MINUS_1, true);         // buttonDown -> -1 Rot Button
-OneButton buttonJog(PIN_JOG, true);              // buttonJog -> Jog Button
-OneButton buttonSPS(PIN_START_PAUSE_STOP, true); // buttonSPS -> Start/Pause/Stop Button
-
-// Shared system state.
-volatile SystemState currentState = STATE_IDLE;
-volatile MotorMode motorMode = MODE_STOPPED;
-int targetRotations = 0;
+#include "motor.h"
+#include "sys.h" 
+OneButton buttonUp(PIN_PLUS_1, true); // buttonUp -> +1 Rot Button
+OneButton buttonDown(PIN_MINUS_1, true);              // buttonDown -> -1 Rot Button
+OneButton buttonJog(PIN_JOG, true);                   // buttonJog -> Jog Button
+OneButton buttonSPS(PIN_START_PAUSE_STOP, true);      // buttonSPS -> Start/Pause/Stop Button
 
 // Time when the target rotation count was last changed during a long press.
 unsigned long lastTargetRotationChangeMs = 0;
@@ -155,50 +151,4 @@ void toggleStartPause()
 void stopRotations()
 {
   handleEvent(EVT_STOP);
-}
-
-void handleEvent(Event event)
-{
-  switch (event)
-  {
-  case EVT_INC_1:
-    targetRotations++;
-    break;
-
-  case EVT_DEC_1:
-    if (targetRotations > 0)
-    {
-      targetRotations--;
-    }
-    break;
-
-  case EVT_JOG_START:
-    currentState = STATE_JOG;
-    motorMode = MODE_JOG;
-    break;
-
-  case EVT_JOG_STOP:
-    currentState = STATE_IDLE;
-    motorMode = MODE_STOPPED;
-    break;
-
-  case EVT_START_PAUSE:
-    if (currentState == STATE_IDLE)
-    {
-      currentState = STATE_RUNNING;
-      motorMode = MODE_RUN;
-    }
-    else if (currentState == STATE_RUNNING)
-    {
-      currentState = STATE_IDLE;
-      motorMode = MODE_STOPPED;
-    }
-    break;
-
-  case EVT_STOP:
-    currentState = STATE_IDLE;
-    targetRotations = 0;
-    motorMode = MODE_STOPPED;
-    break;
-  }
 }
