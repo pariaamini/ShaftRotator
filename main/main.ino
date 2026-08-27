@@ -173,6 +173,7 @@ constexpr float JOG_ACCEL_TIME_S = 1.0;
 // ================= RAMP STATE =================
 
 volatile float currentFreqHz = START_FREQ_HZ;
+volatile bool resetAfterStop = false;
 
 constexpr float RAMP_UPDATE_S =
   RAMP_UPDATE_US / 1000000.0;
@@ -365,18 +366,19 @@ void handleEvent(Event e) {
 
 
         case EVT_STOP_RESET:
-          motorOn = false;
           motorRotations = 0;
           displayValue = 0;
           displayFlag = false;
-          currentState = STATE_IDLE;
+
+          resetAfterStop = true;
           stopMotion();
           break;
-
         case EVT_JOG_START:
-          currentState = STATE_JOG;
-          motorOn = true;
-          startJog();
+          if (currentState != STATE_RUN) {
+            currentState = STATE_JOG;
+            motorOn = true;
+            startJog();
+          }
           break;
 
         default:
@@ -387,17 +389,12 @@ void handleEvent(Event e) {
     //---------------- RUN ----------------
     case STATE_RUN:
       switch (e) {
-
         case EVT_START_PAUSE:
-          // Pause
-          motorOn = false;
-
-          // Save how many rotations are left
           motorRotations = getRotationsRemaining();
           displayValue = motorRotations;
 
+          resetAfterStop = false;
           stopMotion();
-          currentState = STATE_IDLE;
           break;
 
         case EVT_STOP_RESET:
@@ -423,21 +420,12 @@ void handleEvent(Event e) {
     case STATE_JOG:
       switch (e) {
 
+
+
         case EVT_JOG_STOP:
-          motorOn = false;
-          stopJog();
-          currentState = STATE_IDLE;
-          break;
-
-        case EVT_STOP_RESET:
-          motorOn = false;
-          stopJog();
-
-          motorRotations = 0;
-          displayValue = 0;
-          displayFlag = false;
-
-          currentState = STATE_IDLE;
+          if (currentState == STATE_JOG) {
+            stopJog();  // this should start deceleration
+          }
           break;
 
         default:
@@ -518,7 +506,24 @@ void setMotorFrequency(float freqHz) {
 void updateMotorRamp() {
   if (!motorOn)
     return;
+  // DECELERATION
+  if (rampDecel) {
+    currentFreqHz -= RUN_DECEL_STEP_HZ;
 
+    if (currentFreqHz <= START_FREQ_HZ) {
+      currentFreqHz = START_FREQ_HZ;
+
+      motorOn = false;
+      TCB0.CTRLA &= ~TCB_ENABLE_bm;
+
+      return;
+    }
+
+    setMotorFrequency(currentFreqHz);
+    return;
+  }
+
+  // NORMAL ACCELERATION
   // ================= RUN =================
   if (currentState == STATE_RUN) {
     if (rampDecel) {
@@ -586,19 +591,19 @@ void startMotion(uint32_t outputRevs) {
   interrupts();
 }
 
-void stopMotion() {
-  noInterrupts();
+// void stopMotion() {
+//   noInterrupts();
 
-  motorOn = false;
+//   motorOn = false;
 
-  TCB0.CTRLA &= ~TCB_ENABLE_bm;
+//   TCB0.CTRLA &= ~TCB_ENABLE_bm;
 
-  interrupts();
+//   interrupts();
 
-  digitalWrite(MOTOR_ENA, LOW);
+//   digitalWrite(MOTOR_ENA, LOW);
 
-  currentFreqHz = START_FREQ_HZ;
-}
+//   currentFreqHz = START_FREQ_HZ;
+// }
 
 void startJog() {
   noInterrupts();
@@ -622,18 +627,27 @@ void startJog() {
 
   interrupts();
 }
+// void stopJog() {
+//   noInterrupts();
+
+//   motorOn = false;
+
+//   TCB0.CTRLA &= ~TCB_ENABLE_bm;
+
+//   interrupts();
+
+//   digitalWrite(MOTOR_ENA, LOW);
+
+//   currentFreqHz = START_FREQ_HZ;
+// }
+
+
+void stopMotion() {
+  rampDecel = true;
+}
+
 void stopJog() {
-  noInterrupts();
-
-  motorOn = false;
-
-  TCB0.CTRLA &= ~TCB_ENABLE_bm;
-
-  interrupts();
-
-  digitalWrite(MOTOR_ENA, LOW);
-
-  currentFreqHz = START_FREQ_HZ;
+  rampDecel = true;
 }
 
 // BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE
@@ -714,6 +728,25 @@ void setup() {
   digitalWrite(STATUS_LED_PIN, STATUS_LED_VAL);
 }
 
+void finishStop() {
+  if (motorOn || !rampDecel)
+    return;
+
+  digitalWrite(MOTOR_ENA, LOW);
+
+  if (resetAfterStop) {
+    motorRotations = 0;
+    displayValue = 0;
+    displayFlag = false;
+  }
+
+  currentState = STATE_IDLE;
+
+  currentFreqHz = START_FREQ_HZ;
+  rampDecel = false;
+  resetAfterStop = false;
+}
+
 void loop() {
   updateDisplay();                         // Always runs to dispaly something
   digitalWrite(13, motorOn ? HIGH : LOW);  // REMOVE AFTER just for debugging
@@ -722,4 +755,6 @@ void loop() {
   buttonDown.tick();
   buttonStart.tick();
   buttonJog.tick();
+
+  finishStop();
 }
