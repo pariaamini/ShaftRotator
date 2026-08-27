@@ -124,7 +124,7 @@ void setupButtons()
     // start/pause and stop behaviour
     buttonStart.attachClick(toggleStartPause);
     buttonStart.setPressMs(STOP_LONG_PRESS_MS);
-    buttonStart.attachLongPressStart(   );
+    buttonStart.attachLongPressStart(stopAndReset);
 }
 
 void updateButtons()
