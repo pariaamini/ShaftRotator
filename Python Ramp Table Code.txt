@@ -1,0 +1,108 @@
+# ============================
+# S-Curve CCMP Generator
+# ============================
+
+CPU_HZ = 16_000_000
+RAMP_CHECK_FREQ = 1000 # how often it updates ramp speed. in Hz (1000 is every ms)
+
+# ----------------------------
+# Motor / system parameters
+# ----------------------------
+MOTOR_PPR = 200
+MOTOR_GEAR = 10
+OUTPUT_GEAR = 63
+
+PPR = MOTOR_PPR * MOTOR_GEAR
+
+# ----------------------------
+# RUN profile
+# ----------------------------
+
+RUN_RAMP_TIME = 4                                      # 5 seconds
+RUN_RAMP_STEPS = RAMP_CHECK_FREQ * RUN_RAMP_TIME       # long smooth accel
+RUN_RPM_START = 10                                  # OUTPUT RPM
+RUN_RPM_END = 284                                  # output rpm (~4.5RPM)
+
+# ----------------------------
+# JOG profile
+# ----------------------------
+JOG_RAMP_TIME = 1                                       # 1 second
+JOG_RAMP_STEPS = RAMP_CHECK_FREQ * JOG_RAMP_TIME        # shorter accel
+JOG_RPM_START = 10                                      # OUTPUT RPM
+JOG_RPM_END = 220                                  # OUTPUT rpm (low speed) (~3.5RPM)
+
+# ----------------------------
+# Math helpers
+# ----------------------------
+def smoothstep(x):
+    return 3*x*x - 2*x*x*x
+
+def rpm_to_ccmp(rpm_out):
+    """
+    Convert OUTPUT RPM → TCB CCMP
+    CCMP = F_CPU * 60 / (2 * rpm * pulses_per_rev)
+    """
+    return int((CPU_HZ * 60) / (2 * rpm_out * PPR))
+    
+def rpm_to_pulse_hz(rpm_out):
+    return (rpm_out / 60.0) * PPR
+    
+def generate_ccmp_table(steps, rpm_start, rpm_end):
+    table = []
+    pulse_sum = 0.0
+    
+    for i in range(steps):
+        x = i / (steps - 1)
+        s = smoothstep(x)
+
+        rpm = rpm_start + (rpm_end - rpm_start) * s
+        ccmp = rpm_to_ccmp(rpm)
+
+        pulse_hz = rpm_to_pulse_hz(rpm)
+        pulse_sum += pulse_hz / RAMP_CHECK_FREQ
+
+        table.append(ccmp)
+
+    return table, int(round(pulse_sum))
+
+# ----------------------------
+# Generate tables
+# ----------------------------
+run_table, RUN_ACCEL_PULSES = generate_ccmp_table(
+    RUN_RAMP_STEPS,
+    RUN_RPM_START,
+    RUN_RPM_END
+)
+
+jog_table, JOG_ACCEL_PULSES = generate_ccmp_table(
+    JOG_RAMP_STEPS,
+    JOG_RPM_START,
+    JOG_RPM_END
+)
+
+RUN_DECEL_PULSES = RUN_ACCEL_PULSES
+
+# ----------------------------
+# Emit Arduino header
+# ----------------------------
+print("#pragma once")
+print("#include <Arduino.h>")
+print("#include <avr/pgmspace.h>\n")
+
+def emit_array(name, table):
+    print(f"const uint16_t {name}[] PROGMEM = {{")
+    for v in table:
+        print(f"  {v},")
+    print("};\n")
+
+emit_array("ccmpRunRamp", run_table)
+emit_array("ccmpJogRamp", jog_table)
+
+print(f"#define RUN_RAMP_STEPS {RUN_RAMP_STEPS}")
+print(f"#define JOG_RAMP_STEPS {JOG_RAMP_STEPS}")
+print(f"#define CCMP_RUN_MAX {run_table[-1]}")
+print(f"#define CCMP_JOG_MAX {jog_table[-1]}")
+
+print(f"#define RUN_ACCEL_PULSES {RUN_ACCEL_PULSES}UL")
+print(f"#define RUN_DECEL_PULSES {RUN_DECEL_PULSES}UL")
+#print(f"#define JOG_ACCEL_PULSES {JOG_ACCEL_PULSES}UL")
