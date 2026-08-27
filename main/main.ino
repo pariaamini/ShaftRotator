@@ -479,6 +479,6 @@ void finishStop() {
 void loop() {
   updateDisplay();                         // Always runs to dispaly something
   digitalWrite(13, motorOn ? HIGH : LOW);  // REMOVE AFTER just for debugging
-  updateButtons()
+  updateButtons();
   finishStop();
 }

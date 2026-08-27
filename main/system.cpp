@@ -16,7 +16,6 @@ extern void stopMotion();
 extern void startJog();
 extern void stopJog();
 
-
 void handleEvent(Event e) {
   switch (e) {
 
@@ -48,6 +47,13 @@ void handleEvent(Event e) {
       }
       break;
 
+    case EVT_STOP_RESET:
+      displayValue = 0;
+      displayFlag = false;
+
+      resetAfterStop = true;
+      stopMotion();
+      break;
 
     case EVT_JOG_START:
       if (currentState != STATE_RUN) {

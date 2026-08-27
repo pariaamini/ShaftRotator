@@ -14,4 +14,4 @@ constexpr unsigned long BUTTON_LONG_PRESS_UPDATE_MS = 10;
 constexpr unsigned long JOG_LONG_PRESS_MS = 500;
 constexpr unsigned long STOP_LONG_PRESS_MS = 2000;
 
-unsigned long lastTargetRotationChangeMs = 0;
+// unsigned long lastTargetRotationChangeMs = 0;

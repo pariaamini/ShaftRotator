@@ -1,10 +1,12 @@
 
-#include <Arduino.h>
+
 #include <OneButton.h>
 
 #include "buttons.h"
 #include "constants.h"
 #include "system.h"
+
+unsigned long lastTargetRotationChangeMs = 0;
 
 OneButton buttonUp(PIN_UP, true);
 OneButton buttonDown(PIN_DOWN, true);
@@ -122,7 +124,7 @@ void setupButtons()
     // start/pause and stop behaviour
     buttonStart.attachClick(toggleStartPause);
     buttonStart.setPressMs(STOP_LONG_PRESS_MS);
-    buttonStart.attachLongPressStart(stopAndReset);
+    buttonStart.attachLongPressStart(   );
 }
 
 void updateButtons()

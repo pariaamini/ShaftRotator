@@ -1,4 +1,4 @@
-#pragma once
+// #pragma once
 
-void setupDisplay();
-void updateDisplay();
+// void setupDisplay();
+// void updateDisplay();
