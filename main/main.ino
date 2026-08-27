@@ -1,29 +1,19 @@
-// Date: JAN 30, 2026
-// Author: Tom Walker
-// Shaft Rotator Code
-// Notes:
-// This code requires timer interrupts for accurate pulse timing one interrupt controlling the ramp time and one controlling the pulse time.
-// Multiplexing the 7 segment dispaly is needed to appear to be two digits at the same time.
-// The CCMP ramp table must be generated with the Python helper script before runing this program and stored in the same file so that it may be imported to flash memory.
-#include <avr/pgmspace.h>     //Allows tables to be stored in flash not ram as this Arduino lacks ram to store the ramp table
-#include "ccmp_ramp_table.h"  //Place pre generated table in same folder as this sketch. it is called ccmpRamp[]
 #include <OneButton.h>
+#include <EveryTimerB.h>
+
+#define RampTimer TimerB2
 
 // Button pins
 constexpr uint8_t PIN_UP = 2;
 constexpr uint8_t PIN_DOWN = 3;
 constexpr uint8_t PIN_JOG = 6;
-constexpr uint8_t PIN_START_PAUSE_STOP = 5;
-
-// Allowed rotation range
-constexpr int MIN_ROTATIONS = 0;
-constexpr int MAX_ROTATIONS = 99;  // not essential
+constexpr uint8_t PIN_START_PAUSE_STOP = 4;  // aligns to +5 button
 
 // Button timing
 constexpr unsigned long ROTATION_LONG_PRESS_MS = 1000;
 constexpr unsigned long BUTTON_LONG_PRESS_UPDATE_MS = 10;
 constexpr unsigned long JOG_LONG_PRESS_MS = 500;
-constexpr unsigned long STOP_LONG_PRESS_MS = 3000;
+constexpr unsigned long STOP_LONG_PRESS_MS = 2000;
 
 unsigned long lastTargetRotationChangeMs = 0;
 
@@ -156,13 +146,45 @@ const uint32_t pulsesPerRevSystemOut = pulsesPerRevMotorOut * SYSTEM_GEAR_RATIO;
 volatile bool pulseLevel = LOW;
 volatile uint32_t sentPulses = 0;
 volatile uint32_t targetPulses = 0;
-volatile uint32_t cruisePulses = 0;
-volatile uint32_t accelEndPulse = 0;
+
 volatile uint32_t decelStartPulse = 0;
-// Ramp
-volatile uint16_t rampCheckFreq = 1000;  // How often to update speed during ramp in ms
-volatile uint16_t rampStep = 0;          // Current index into ccmpRamp[]
+
 volatile bool rampDecel = false;
+
+// ================= MOTOR SPEED SETTINGS =================
+
+// Motor pulse frequency at startup
+constexpr float START_FREQ_HZ = 300.0;
+
+// Normal run speed
+constexpr float RUN_FREQ_HZ = 9000.0;
+
+// Jog speed
+constexpr float JOG_FREQ_HZ = 7000.0;
+
+// Ramp update interval
+constexpr unsigned long RAMP_UPDATE_US = 10000;  // 10 ms
+
+// How long acceleration/deceleration should take
+constexpr float RUN_ACCEL_TIME_S = 2.0;
+constexpr float RUN_DECEL_TIME_S = 2.0;
+constexpr float JOG_ACCEL_TIME_S = 1.0;
+
+// ================= RAMP STATE =================
+
+volatile float currentFreqHz = START_FREQ_HZ;
+
+constexpr float RAMP_UPDATE_S =
+  RAMP_UPDATE_US / 1000000.0;
+
+constexpr float RUN_ACCEL_STEP_HZ =
+  (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / RUN_ACCEL_TIME_S;
+
+constexpr float RUN_DECEL_STEP_HZ =
+  (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / RUN_DECEL_TIME_S;
+
+constexpr float JOG_ACCEL_STEP_HZ =
+  (JOG_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / JOG_ACCEL_TIME_S;
 
 // Motor pins
 const int MOTOR_PUL = 18;  // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
@@ -224,6 +246,10 @@ void jogButtonStop() {
 }
 
 void toggleStartPause() {
+  digitalWrite(13, HIGH);
+  delay(200);
+  digitalWrite(13, LOW);
+
   handleEvent(EVT_START_PAUSE);
 }
 
@@ -337,6 +363,7 @@ void handleEvent(Event e) {
           startMotion(motorRotations);
           break;
 
+
         case EVT_STOP_RESET:
           motorOn = false;
           motorRotations = 0;
@@ -428,6 +455,7 @@ void setupPulseTimer(uint16_t ccmpInitial) {
   TCB0.INTCTRL = TCB_CAPT_bm;
   TCB0.CTRLA = TCB_CLKSEL_CLKDIV1_gc;  // Not enabled yet
 }
+
 // Pulse counting ISR. Also handles stopping after target reached
 ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
 
@@ -452,7 +480,6 @@ ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
       motorRotations = 0;
       displayFlag = true;  // Display just centre segments
       TCB0.CTRLA &= ~TCB_ENABLE_bm;
-      TCB1.CTRLA &= ~TCB_ENABLE_bm;  // Stop ramp too
       digitalWrite(MOTOR_ENA, LOW);
     }
   }
@@ -460,96 +487,153 @@ ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
   TCB0.INTFLAGS = TCB_CAPT_bm;
 }
 
-void setupRampTimer() {
-  TCB1.CTRLB = TCB_CNTMODE_INT_gc;     // Periodic interrupt
-  TCB1.CCMP = F_CPU / rampCheckFreq;   // 1 kHz (happens every 16,000,000/1,000 cpu cycles ie once every 1ms)
-  TCB1.CTRLA = TCB_CLKSEL_CLKDIV1_gc;  // No enable here
-  TCB1.INTCTRL = TCB_CAPT_bm;          // Interrupt on compare match
-}
-// Ramping ISR
-ISR(TCB1_INT_vect) {
-  if (!motorOn) {
-    TCB1.INTFLAGS = TCB_CAPT_bm;
-    return;
-  }
-  if (currentState == STATE_RUN) {  //===== RUN MODE ==========
-    if (rampDecel) {                //-------- DECEL --------
-      if (rampStep > 0) {
-        rampStep--;
-        TCB0.CCMP = pgm_read_word(&ccmpRunRamp[rampStep]);
-      } else if (rampStep < RUN_RAMP_STEPS) {  //-------- ACCEL --------
-        TCB0.CCMP = pgm_read_word(&ccmpRunRamp[rampStep]);
-        rampStep++;
-      } else {  //-------- HOLD --------
-        rampStep = RUN_RAMP_STEPS - 1;
-        TCB0.CCMP = pgm_read_word(&ccmpRunRamp[rampStep]);
-        // TCB0.CCMP = CCMP_RUN_MAX;//Should be the same as above
-      }
-    } else if (currentState == STATE_JOG) {  //===== JOG MODE ==========
-      if (rampStep < JOG_RAMP_STEPS) {       //---- SHORT ACCEL ----
-        TCB0.CCMP = pgm_read_word(&ccmpJogRamp[rampStep]);
-        rampStep++;
-      } else {  //---- HOLD (JOG SPEED) ----
-        TCB0.CCMP = CCMP_JOG_MAX;
-      }
-    }
+void setMotorFrequency(float freqHz) {
+  if (freqHz < 1.0)
+    freqHz = 1.0;
 
-    TCB1.INTFLAGS = TCB_CAPT_bm;
-  }
+  /*
+   * TCB0 interrupt toggles MOTOR_PUL every interrupt.
+   *
+   * Therefore:
+   *
+   * 2 interrupts = 1 complete pulse
+   *
+   * timerInterruptFrequency = motorPulseFrequency * 2
+   */
+
+  float interruptFreqHz = freqHz * 2.0;
+
+  uint32_t ccmp =
+    (uint32_t)(F_CPU / interruptFreqHz);
+
+  if (ccmp > 65535)
+    ccmp = 65535;
+
+  if (ccmp < 1)
+    ccmp = 1;
+
+  TCB0.CCMP = (uint16_t)ccmp;
 }
+
+void updateMotorRamp() {
+  if (!motorOn)
+    return;
+
+  // ================= RUN =================
+  if (currentState == STATE_RUN) {
+    if (rampDecel) {
+      currentFreqHz -= RUN_DECEL_STEP_HZ;
+
+      if (currentFreqHz < START_FREQ_HZ)
+        currentFreqHz = START_FREQ_HZ;
+    } else {
+      currentFreqHz += RUN_ACCEL_STEP_HZ;
+
+      if (currentFreqHz > RUN_FREQ_HZ)
+        currentFreqHz = RUN_FREQ_HZ;
+    }
+  }
+
+  // ================= JOG =================
+  else if (currentState == STATE_JOG) {
+    currentFreqHz += RUN_ACCEL_STEP_HZ;
+
+    if (currentFreqHz > JOG_FREQ_HZ)
+      currentFreqHz = JOG_FREQ_HZ;
+  }
+
+  setMotorFrequency(currentFreqHz);
+}
+
 // MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE
 void startMotion(uint32_t outputRevs) {
   noInterrupts();
-  rampStep = 0;
-  rampDecel = false;
+
   sentPulses = 0;
-  targetPulses = (uint32_t)outputRevs * pulsesPerRevSystemOut;
-  cruisePulses = targetPulses - RUN_ACCEL_PULSES - RUN_DECEL_PULSES;
-  accelEndPulse = RUN_ACCEL_PULSES;
-  decelStartPulse = RUN_ACCEL_PULSES + cruisePulses;
+
+  targetPulses =
+    (uint32_t)outputRevs * pulsesPerRevSystemOut;
+
+  rampDecel = false;
+  currentFreqHz = START_FREQ_HZ;
+
+  /*
+   * Temporary simple decel trigger:
+   * begin decelerating near the end.
+   *
+   * We can make this mathematically precise later.
+   */
+  uint32_t decelPulseCount =
+    pulsesPerRevSystemOut / 2;
+
+  if (targetPulses > decelPulseCount)
+    decelStartPulse =
+      targetPulses - decelPulseCount;
+  else
+    decelStartPulse = 0;
+
+  setMotorFrequency(currentFreqHz);
 
   motorOn = true;
-  TCB1.CTRLA |= TCB_ENABLE_bm;  // Start ramp timer
-  TCB0.CTRLA |= TCB_ENABLE_bm;  // Start pulse timer
+
   digitalWrite(MOTOR_PUL, LOW);
   pulseLevel = LOW;
+
   digitalWrite(MOTOR_ENA, HIGH);
+
+  TCB0.CTRLA |= TCB_ENABLE_bm;
 
   interrupts();
 }
+
 void stopMotion() {
   noInterrupts();
 
   motorOn = false;
+
   TCB0.CTRLA &= ~TCB_ENABLE_bm;
-  TCB1.CTRLA &= ~TCB_ENABLE_bm;
 
   interrupts();
 
   digitalWrite(MOTOR_ENA, LOW);
+
+  currentFreqHz = START_FREQ_HZ;
 }
+
 void startJog() {
   noInterrupts();
-  rampStep = 0;
-  rampDecel = false;
+
   sentPulses = 0;
   targetPulses = 0;
+
+  rampDecel = false;
+  currentFreqHz = START_FREQ_HZ;
+
+  setMotorFrequency(currentFreqHz);
+
   motorOn = true;
-  TCB1.CTRLA |= TCB_ENABLE_bm;  // Start ramp timer
-  TCB0.CTRLA |= TCB_ENABLE_bm;  // Start pulse timer
+
   digitalWrite(MOTOR_PUL, LOW);
   pulseLevel = LOW;
+
   digitalWrite(MOTOR_ENA, HIGH);
+
+  TCB0.CTRLA |= TCB_ENABLE_bm;
+
   interrupts();
 }
 void stopJog() {
   noInterrupts();
+
   motorOn = false;
+
   TCB0.CTRLA &= ~TCB_ENABLE_bm;
-  TCB1.CTRLA &= ~TCB_ENABLE_bm;
+
   interrupts();
+
   digitalWrite(MOTOR_ENA, LOW);
-  // DigitalWrite(MOTOR_PUL, HIGH);
+
+  currentFreqHz = START_FREQ_HZ;
 }
 
 // BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE
@@ -596,9 +680,11 @@ void setup() {
   pinMode(MOTOR_DIR, OUTPUT);
   pinMode(MOTOR_ENA, OUTPUT);
 
-  // Initialize Timers
-  setupRampTimer();
-  setupPulseTimer(pgm_read_word(&ccmpRunRamp[0]));  // Starting ccmp
+  setupPulseTimer(65535);
+
+  RampTimer.initialize();
+  RampTimer.attachInterrupt(updateMotorRamp);
+  RampTimer.setPeriod(RAMP_UPDATE_US);
 
   // Battery level
   pinMode(BAT_PIN, INPUT);  // I Belive this is not needed for analog pins but helps readability.
