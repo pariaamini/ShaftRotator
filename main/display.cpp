@@ -4,6 +4,7 @@
 
 #include "display.h"
 #include "system.h"
+#include "battery.h"
 
 // Display Variables
 uint32_t lastRefresh = 0;
@@ -13,8 +14,13 @@ volatile int displayValue = 0;
 volatile bool displayFlag = false; // Flag to display just centre segments 'g'
 uint32_t now = 0;
 
-extern int getRotationsRemaining();
+bool temporaryDisplayActive = false;
+unsigned long temporaryDisplayStartMs = 0;
+unsigned long temporaryDisplayDurationMs = 0;
+int temporaryDisplayValue = 0;
+int valueBeforeTemporary = 0;
 
+extern int getRotationsRemaining();
 
 // LED segment layout for 0-9
 // Segment pins: A B C D E F G
@@ -92,8 +98,10 @@ void updateDisplay()
   showLeft = !showLeft;
 }
 
-void setupDisplay() {
-  for (int i = 0; i < 7; i++) {
+void setupDisplay()
+{
+  for (int i = 0; i < 7; i++)
+  {
     pinMode(segPins[0][i], OUTPUT);
   }
 
@@ -104,20 +112,45 @@ void setupDisplay() {
   digitalWrite(DIG2, HIGH);
 }
 
-void setDisplayValue(int value) {
+void setDisplayValue(int value)
+{
   displayValue = value;
 }
 
-void setDisplayFlag(bool flag) {
+void setDisplayFlag(bool flag)
+{
   displayFlag = flag;
 }
 
 void refreshDisplayValue()
 {
-  if (currentState == STATE_RUN)
-  {
-    setDisplayValue(getRotationsRemaining());
-  }
+    if (temporaryDisplayActive)
+    {
+        if (millis() - temporaryDisplayStartMs < temporaryDisplayDurationMs)
+        {
+            setDisplayValue(temporaryDisplayValue);
+            return;
+        }
+
+        // Temporary display finished
+        temporaryDisplayActive = false;
+        setDisplayValue(valueBeforeTemporary);
+    }
+
+    if (currentState == STATE_RUN)
+    {
+        setDisplayValue(getRotationsRemaining());
+    }
 }
 
+void showTemporaryValue(int value, unsigned long durationMs)
+{
+    valueBeforeTemporary = displayValue;
 
+    temporaryDisplayValue = value;
+    temporaryDisplayStartMs = millis();
+    temporaryDisplayDurationMs = durationMs;
+    temporaryDisplayActive = true;
+
+    setDisplayValue(value);
+}

@@ -1,7 +1,8 @@
 #pragma once
 
+
 // StateMachine
-enum SystemState {  // For Readability
+enum SystemState { 
   STATE_IDLE,
   STATE_RUN,
   STATE_JOG,
@@ -15,7 +16,8 @@ enum Event {
   EVT_START_PAUSE,
   EVT_STOP_RESET,
   EVT_JOG_START,
-  EVT_JOG_STOP
+  EVT_JOG_STOP,
+  EVT_SHOW_BATTERY,
 };
 
 extern volatile SystemState currentState;
