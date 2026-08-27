@@ -1,15 +1,8 @@
 #include <Arduino.h>
 #include "battery.h"
 #include "display.h"
+#include "constants.h"
 
-// Battery Level
-const int BAT_PIN = A7; // Same as D21 (21)
-// Voltage Divider Vout = Vin * (R2/(R2+R1)) this should give max 4.2v which is safely under 5v max (Vin max is 25.2V)
-const float R1 = 100000.0;        // ohms R1 of voltage divider
-const float R2 = 20000.0;         // ohms R2 of voltage divider
-const uint32_t ADC_REF_mV = 5000; // Nano Every reference
-// uint32_t lowBat_mV = 6 * 3300;  //Do not let pack go under this voltage. Update this as needed. 3300mv minimum per cell, 6 cells.
-// Battery is nonlinear so a value table is used
 struct BatPoint
 {
     uint16_t mV;
@@ -29,8 +22,6 @@ const BatPoint batTable[] = { // EYBMS fuel gauge and other online resources use
     {18000, 0}};
 const int BAT_TABLE_SIZE = sizeof(batTable) / sizeof(batTable[0]);
 
-// BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE
-// BATTERY CODE  HAS DELAY SO DONT RUN DURING LOOP
 uint32_t readBatteryVoltage_mV()
 {
     analogRead(BAT_PIN); // Dummy read to allow ADC settling

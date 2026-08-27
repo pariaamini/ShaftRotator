@@ -88,3 +88,10 @@ void handleEvent(Event e)
   }
   }
 }
+
+void setupStatusLEDs()
+{
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  digitalWrite(STATUS_LED_PIN, LOW);
+  pinMode(DEBUG_LED_PIN, OUTPUT);
+}
