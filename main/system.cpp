@@ -1,5 +1,6 @@
 #include "system.h"
 #include "constants.h"
+#include "display.h"
 
 volatile SystemState currentState = STATE_IDLE;
 
@@ -15,6 +16,8 @@ extern void startMotion(uint32_t outputRevs);
 extern void stopMotion();
 extern void startJog();
 extern void stopJog();
+
+
 
 void handleEvent(Event e) {
   switch (e) {
