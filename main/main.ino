@@ -7,7 +7,7 @@
 constexpr uint8_t PIN_UP = 2;
 constexpr uint8_t PIN_DOWN = 3;
 constexpr uint8_t PIN_JOG = 6;
-constexpr uint8_t PIN_START_PAUSE_STOP = 4;  // aligns to +5 button
+constexpr uint8_t PIN_START_PAUSE_STOP = 4; // aligns to +5 button
 
 // Button timing
 constexpr unsigned long ROTATION_LONG_PRESS_MS = 1000;
@@ -22,95 +22,98 @@ OneButton buttonDown(PIN_DOWN, true);
 OneButton buttonJog(PIN_JOG, true);
 OneButton buttonStart(PIN_START_PAUSE_STOP, true);
 
-struct ButtonInfo {
+struct ButtonInfo
+{
   OneButton *button;
-  int direction;  // if the rotation is supposed to increase or decrease (by 1)
+  int direction; // if the rotation is supposed to increase or decrease (by 1)
 };
 
-ButtonInfo upInfo = { &buttonUp, 1 };
-ButtonInfo downInfo = { &buttonDown, -1 };
+ButtonInfo upInfo = {&buttonUp, 1};
+ButtonInfo downInfo = {&buttonDown, -1};
 
 // LED segment layout for 0-9
 // Segment pins: A B C D E F G
 const byte segPins[2][7] = {
-  // Different segments for each the different digits
-  // Arduino Pin, segment letter, led pin, wire colour
-  {       // For digit 1
-    9,    // A //Pin 2 //Black
-    12,   // B //Pin 6 //Blue
-    15,   // C //Pin 9 //Orange
-    11,   // D //Pin 5 //Purple
-    14,   // E //Pin 8 //Yellow
-    10,   // F //Pin 3 //White
-    8 },  // G //Pin 1 //Brown
-  {       // For digit 2
-    9,    // A //Pin 2 //Black
-    14,   // B //Pin 8 //Yellow
-    12,   // C //Pin 6 //Blue
-    11,   // D //Pin 5 //Purple
-    10,   // E //Pin 3 //White
-    15,   // F //Pin 9 //Orange
-    8 }   // G //Pin 1 //Brown}
+    // Different segments for each the different digits
+    // Arduino Pin, segment letter, led pin, wire colour
+    {    // For digit 1
+     9,  // A //Pin 2 //Black
+     12, // B //Pin 6 //Blue
+     15, // C //Pin 9 //Orange
+     11, // D //Pin 5 //Purple
+     14, // E //Pin 8 //Yellow
+     10, // F //Pin 3 //White
+     8}, // G //Pin 1 //Brown
+    {    // For digit 2
+     9,  // A //Pin 2 //Black
+     14, // B //Pin 8 //Yellow
+     12, // C //Pin 6 //Blue
+     11, // D //Pin 5 //Purple
+     10, // E //Pin 3 //White
+     15, // F //Pin 9 //Orange
+     8}  // G //Pin 1 //Brown}
 };
 // Digit anodes
-const int DIG1 = 16;  // Left digit //Pin7 green
-const int DIG2 = 17;  // Right digit //Pin4 grey
+const int DIG1 = 16; // Left digit //Pin7 green
+const int DIG2 = 17; // Right digit //Pin4 grey
 // Common-anode segment map (0 = ON, 1 = OFF)
 const byte digits[10][7] = {
-  { 0, 0, 0, 0, 0, 0, 1 },  // 0
-  { 1, 0, 0, 1, 1, 1, 1 },  // 1
-  { 0, 0, 1, 0, 0, 1, 0 },  // 2
-  { 0, 0, 0, 0, 1, 1, 0 },  // 3
-  { 1, 0, 0, 1, 1, 0, 0 },  // 4
-  { 0, 1, 0, 0, 1, 0, 0 },  // 5
-  { 0, 1, 0, 0, 0, 0, 0 },  // 6
-  { 0, 0, 0, 1, 1, 1, 1 },  // 7
-  { 0, 0, 0, 0, 0, 0, 0 },  // 8
-  { 0, 0, 0, 0, 1, 0, 0 }   // 9
+    {0, 0, 0, 0, 0, 0, 1}, // 0
+    {1, 0, 0, 1, 1, 1, 1}, // 1
+    {0, 0, 1, 0, 0, 1, 0}, // 2
+    {0, 0, 0, 0, 1, 1, 0}, // 3
+    {1, 0, 0, 1, 1, 0, 0}, // 4
+    {0, 1, 0, 0, 1, 0, 0}, // 5
+    {0, 1, 0, 0, 0, 0, 0}, // 6
+    {0, 0, 0, 1, 1, 1, 1}, // 7
+    {0, 0, 0, 0, 0, 0, 0}, // 8
+    {0, 0, 0, 0, 1, 0, 0}  // 9
 };
 
 // Main global variables
-const int STATUS_LED_PIN = 7;  // Pin used for Bat/Count LEDS
-bool STATUS_LED_VAL = LOW;     // LOW for Battery HIGH for Count
+const int STATUS_LED_PIN = 7; // Pin used for Bat/Count LEDS
+bool STATUS_LED_VAL = LOW;    // LOW for Battery HIGH for Count
 // Battery Level
-const int BAT_PIN = A7;  // Same as D21 (21)
+const int BAT_PIN = A7; // Same as D21 (21)
 uint8_t batLvl = 0;
 uint32_t bat_mV = 0;
-uint32_t lastBatRead = 0;  // Time of last battery read
+uint32_t lastBatRead = 0; // Time of last battery read
 // Voltage Divider Vout = Vin * (R2/(R2+R1)) this should give max 4.2v which is safely under 5v max (Vin max is 25.2V)
-const float R1 = 100000.0;         // ohms R1 of voltage divider
-const float R2 = 20000.0;          // ohms R2 of voltage divider
-const uint32_t ADC_REF_mV = 5000;  // Nano Every reference
+const float R1 = 100000.0;        // ohms R1 of voltage divider
+const float R2 = 20000.0;         // ohms R2 of voltage divider
+const uint32_t ADC_REF_mV = 5000; // Nano Every reference
 // uint32_t lowBat_mV = 6 * 3300;  //Do not let pack go under this voltage. Update this as needed. 3300mv minimum per cell, 6 cells.
 // Battery is nonlinear so a value table is used
-struct BatPoint {
+struct BatPoint
+{
   uint16_t mV;
   uint8_t percent;
 };
-const BatPoint batTable[] = {  // EYBMS fuel gauge and other online resources used to make this table. Testing of battery to verify accuracy would be recomended.
-  { 24600, 100 },
-  { 24000, 90 },
-  { 23400, 80 },
-  { 22800, 70 },
-  { 21900, 60 },
-  { 21000, 50 },
-  { 20400, 40 },
-  { 19800, 30 },
-  { 19200, 20 },
-  { 18600, 10 },
-  { 18000, 0 }
-};
+const BatPoint batTable[] = { // EYBMS fuel gauge and other online resources used to make this table. Testing of battery to verify accuracy would be recomended.
+    {24600, 100},
+    {24000, 90},
+    {23400, 80},
+    {22800, 70},
+    {21900, 60},
+    {21000, 50},
+    {20400, 40},
+    {19800, 30},
+    {19200, 20},
+    {18600, 10},
+    {18000, 0}};
 const int BAT_TABLE_SIZE = sizeof(batTable) / sizeof(batTable[0]);
 
 // StateMachine
-enum SystemState {  // For Readability
+enum SystemState
+{ // For Readability
   STATE_IDLE,
   STATE_RUN,
   STATE_JOG,
   STATE_PAUSE
 
 };
-enum Event {
+enum Event
+{
   EVT_NONE,
   EVT_INC_1,
   EVT_DEC_1,
@@ -120,7 +123,8 @@ enum Event {
   EVT_JOG_STOP
 };
 
-enum MotorMode {
+enum MotorMode
+{
   MODE_STOPPED,
   MODE_RUN,
   MODE_JOG
@@ -129,18 +133,18 @@ volatile SystemState currentState = STATE_IDLE;
 
 // Display Variables
 uint32_t lastRefresh = 0;
-const uint32_t refreshInterval = 3;  // In ms
+const uint32_t refreshInterval = 3; // In ms
 bool showLeft = true;
 volatile int displayValue = 0;
-volatile bool displayFlag = false;  // Flag to display just centre segments 'g'
+volatile bool displayFlag = false; // Flag to display just centre segments 'g'
 uint32_t now = 0;
 
 // NEW MOTOR VARIABLES
-volatile bool motorOn = false;  // LED state will mimic motor
+volatile bool motorOn = false; // LED state will mimic motor
 int motorRotations = 0;
-const int MOTOR_GEAR_RATIO = 10;   // JKong gear reduction
-const int SYSTEM_GEAR_RATIO = 63;  // External reduction only
-int pulsesPerRev = 200;            // Dip switch setting off,off,off,off     Section 5.1 in motor manual
+const int MOTOR_GEAR_RATIO = 10;  // JKong gear reduction
+const int SYSTEM_GEAR_RATIO = 63; // External reduction only
+int pulsesPerRev = 200;           // Dip switch setting off,off,off,off     Section 5.1 in motor manual
 uint32_t pulsesPerRevMotorOut = MOTOR_GEAR_RATIO * pulsesPerRev;
 const uint32_t pulsesPerRevSystemOut = pulsesPerRevMotorOut * SYSTEM_GEAR_RATIO;
 volatile bool pulseLevel = LOW;
@@ -163,11 +167,11 @@ constexpr float RUN_FREQ_HZ = 9000.0;
 constexpr float JOG_FREQ_HZ = 7000.0;
 
 // Ramp update interval
-constexpr unsigned long RAMP_UPDATE_US = 10000;  // 10 ms
+constexpr unsigned long RAMP_UPDATE_US = 10000; // 10 ms
 
 // How long acceleration/deceleration should take
 constexpr float RUN_ACCEL_TIME_S = 2.0;
-constexpr float RUN_DECEL_TIME_S = 2.0;
+constexpr float RUN_DECEL_TIME_S = 1.0;
 constexpr float JOG_ACCEL_TIME_S = 1.0;
 
 // ================= RAMP STATE =================
@@ -176,77 +180,85 @@ volatile float currentFreqHz = START_FREQ_HZ;
 volatile bool resetAfterStop = false;
 
 constexpr float RAMP_UPDATE_S =
-  RAMP_UPDATE_US / 1000000.0;
+    RAMP_UPDATE_US / 1000000.0;
 
 constexpr float RUN_ACCEL_STEP_HZ =
-  (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / RUN_ACCEL_TIME_S;
+    (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / RUN_ACCEL_TIME_S;
 
-constexpr float RUN_DECEL_STEP_HZ =
-  (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / RUN_DECEL_TIME_S;
+constexpr float MOTOR_DECEL_STEP_HZ =
+    (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / RUN_DECEL_TIME_S;
 
 constexpr float JOG_ACCEL_STEP_HZ =
-  (JOG_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / JOG_ACCEL_TIME_S;
+    (JOG_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / JOG_ACCEL_TIME_S;
 
 // Motor pins
-const int MOTOR_PUL = 18;  // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
-const int MOTOR_DIR = 19;  // Pin for motor DIR-
-const int MOTOR_ENA = 20;  // Pin for motor ENA-     HIGH for motor on
-const int MOTOR_ALM = 21;  // Pin for motor ALM-     INPUT PIN
+const int MOTOR_PUL = 18; // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
+const int MOTOR_DIR = 19; // Pin for motor DIR-
+const int MOTOR_ENA = 20; // Pin for motor ENA-     HIGH for motor on
+const int MOTOR_ALM = 21; // Pin for motor ALM-     INPUT PIN
 
-int getRotationsRemaining() {  // Return how many more rotations are left. This is to be displayed and will be shown as a rounded integer
+int getRotationsRemaining()
+{ // Return how many more rotations are left. This is to be displayed and will be shown as a rounded integer
   // Pulse Counter Based
-  noInterrupts();  // Makes sure values dont get changed as they are read. this should not take more than a couple micros so not a problem
+  noInterrupts(); // Makes sure values dont get changed as they are read. this should not take more than a couple micros so not a problem
   uint32_t sent = sentPulses;
   uint32_t target = targetPulses;
   interrupts();
   if (sent >= target)
-    return 0;  // If at the end do not waste CPU time on math
+    return 0; // If at the end do not waste CPU time on math
   uint32_t remaining = target - sent;
   return ((remaining + pulsesPerRevSystemOut - 1) / (pulsesPerRevSystemOut));
 }
 
 // FUNCTION DECLARATIONS
 // Displays 1 digit per call from the global varible of the displayValue. That digit is left on between calls.
-void updateDisplay() {
+void updateDisplay()
+{
   uint32_t now = millis();
   if (now - lastRefresh < refreshInterval)
     return;
-  lastRefresh = now;  // Set last refresh to current time
+  lastRefresh = now; // Set last refresh to current time
 
   // Turn digits off
   digitalWrite(DIG1, HIGH);
   digitalWrite(DIG2, HIGH);
 
-  int activeDigit = showLeft ? 0 : 1;                                 // Swaps since we want 0 for left and 1 for right
-  int digitValue = showLeft ? displayValue / 10 : displayValue % 10;  // Takes the required digit out of dispalyValue to write
+  int activeDigit = showLeft ? 0 : 1;                                // Swaps since we want 0 for left and 1 for right
+  int digitValue = showLeft ? displayValue / 10 : displayValue % 10; // Takes the required digit out of dispalyValue to write
 
   // Enter only if wanting to show centre lines only not a number
-  if (displayFlag) {
-    for (int i = 0; i < 7; i++) {  // Sets all segments OFF
+  if (displayFlag)
+  {
+    for (int i = 0; i < 7; i++)
+    { // Sets all segments OFF
       digitalWrite(segPins[activeDigit][i], HIGH);
     }
-    digitalWrite(8, LOW);                       // Set 'G' to ON
-    digitalWrite(showLeft ? DIG1 : DIG2, LOW);  // Turn ON digit
+    digitalWrite(8, LOW);                      // Set 'G' to ON
+    digitalWrite(showLeft ? DIG1 : DIG2, LOW); // Turn ON digit
     showLeft = !showLeft;
     return;
   }
   // For writing number to display
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < 7; i++)
+  {
     digitalWrite(segPins[activeDigit][i], digits[digitValue][i] ? HIGH : LOW);
   }
   digitalWrite(showLeft ? DIG1 : DIG2, LOW);
   showLeft = !showLeft;
 }
 
-void jogButtonStart() {
+void jogButtonStart()
+{
   handleEvent(EVT_JOG_START);
 }
 
-void jogButtonStop() {
+void jogButtonStop()
+{
   handleEvent(EVT_JOG_STOP);
 }
 
-void toggleStartPause() {
+void toggleStartPause()
+{
   digitalWrite(13, HIGH);
   delay(200);
   digitalWrite(13, LOW);
@@ -254,51 +266,66 @@ void toggleStartPause() {
   handleEvent(EVT_START_PAUSE);
 }
 
-void stopAndReset() {
+void stopAndReset()
+{
   handleEvent(EVT_STOP_RESET);
 }
 
 // Up/Down Btn: Single Click
-void rotDirection(bool polarity) {
-  if (polarity) {  // if dir +ve, increase # of rotations by 1
+void rotDirection(bool polarity)
+{
+  if (polarity)
+  { // if dir +ve, increase # of rotations by 1
     handleEvent(EVT_INC_1);
-  } else {  // if dir -ve, decrease # of rotations by 1
+  }
+  else
+  { // if dir -ve, decrease # of rotations by 1
     handleEvent(EVT_DEC_1);
   }
 }
 
-void changeRot(void *context) {  // changes target rotations by 1
+void changeRot(void *context)
+{ // changes target rotations by 1
   ButtonInfo *info = (ButtonInfo *)context;
   rotDirection(info->direction == 1);
 }
 
-void startAccelRotChange(void *context) {
+void startAccelRotChange(void *context)
+{
   lastTargetRotationChangeMs = millis();
 }
 
-void whileAccelRotChange(void *context) {
+void whileAccelRotChange(void *context)
+{
   ButtonInfo *info = (ButtonInfo *)context;
-  unsigned long buttonHeldMs = info->button->getPressedMs();  // how long the button has been held
-  unsigned long now = millis();                               // current time
-  unsigned long timeBetweenRotValueChangesMs;                 // how quick the amount of rotations is changing
+  unsigned long buttonHeldMs = info->button->getPressedMs(); // how long the button has been held
+  unsigned long now = millis();                              // current time
+  unsigned long timeBetweenRotValueChangesMs;                // how quick the amount of rotations is changing
 
   // Increase the repeat rate as the button is held
-  if (buttonHeldMs < 2000) {  // if held for < 2s, change the target rotation # by 1 every 500ms
+  if (buttonHeldMs < 2000)
+  { // if held for < 2s, change the target rotation # by 1 every 500ms
     timeBetweenRotValueChangesMs = 500;
-  } else if (buttonHeldMs < 4000) {
-    timeBetweenRotValueChangesMs = 250;  // if held for < 4s, change the target rotation # by 1 every 250ms
-  } else {
-    timeBetweenRotValueChangesMs = 100;  // if held for > 4s, change the target rotation # by 1 every 100ms
+  }
+  else if (buttonHeldMs < 4000)
+  {
+    timeBetweenRotValueChangesMs = 250; // if held for < 4s, change the target rotation # by 1 every 250ms
+  }
+  else
+  {
+    timeBetweenRotValueChangesMs = 100; // if held for > 4s, change the target rotation # by 1 every 100ms
   }
 
   // Change target rotation # by 1 when timeBetweenRotValueChangesMs is surpassed
-  if (now - lastTargetRotationChangeMs >= timeBetweenRotValueChangesMs) {
+  if (now - lastTargetRotationChangeMs >= timeBetweenRotValueChangesMs)
+  {
     rotDirection(info->direction == 1);
     lastTargetRotationChangeMs = now;
   }
 }
 
-void setupButtons() {
+void setupButtons()
+{
   // up/down button behaviour
   buttonUp.attachClick(changeRot, &upInfo);
   buttonUp.attachLongPressStart(startAccelRotChange, &upInfo);
@@ -325,7 +352,8 @@ void setupButtons() {
   buttonStart.attachLongPressStart(stopAndReset);
 }
 
-void updateButtons() {
+void updateButtons()
+{
   buttonUp.tick();
   buttonDown.tick();
   buttonStart.tick();
@@ -334,120 +362,126 @@ void updateButtons() {
 
 // The state button handler
 // STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE      STATE MACHINE CODE
-void handleEvent(Event e) {
-  switch (currentState) {
+void handleEvent(Event e)
+{
+  switch (currentState)
+  {
 
-    //---------------- IDLE ----------------
-    case STATE_IDLE:
-      switch (e) {
+  //---------------- IDLE ----------------
+  case STATE_IDLE:
+    switch (e)
+    {
 
-        case EVT_INC_1:
-          motorRotations = min(motorRotations + 1, 99);
-          displayValue = motorRotations;
-          displayFlag = false;
-          break;
+    case EVT_INC_1:
+      motorRotations = min(motorRotations + 1, 99);
+      displayValue = motorRotations;
+      displayFlag = false;
+      break;
 
-        case EVT_DEC_1:
-          motorRotations = max(motorRotations - 1, 0);
-          displayValue = motorRotations;
-          displayFlag = false;
-          break;
+    case EVT_DEC_1:
+      motorRotations = max(motorRotations - 1, 0);
+      displayValue = motorRotations;
+      displayFlag = false;
+      break;
 
-        case EVT_START_PAUSE:
-          // Don't start if there are no rotations selected
-          if (motorRotations == 0) {
-            break;
-          }
+    case EVT_START_PAUSE:
+      // Don't start if there are no rotations selected
+      if (motorRotations == 0)
+      {
+        break;
+      }
 
-          motorOn = true;
-          currentState = STATE_RUN;
-          startMotion(motorRotations);
-          break;
+      motorOn = true;
+      currentState = STATE_RUN;
+      startMotion(motorRotations);
+      break;
 
+    case EVT_STOP_RESET:
+      displayValue = 0;
+      displayFlag = false;
 
-        case EVT_STOP_RESET:
-          motorRotations = 0;
-          displayValue = 0;
-          displayFlag = false;
+      resetAfterStop = true;
+      stopMotion();
+      break;
 
-          resetAfterStop = true;
-          stopMotion();
-          break;
-        case EVT_JOG_START:
-          if (currentState != STATE_RUN) {
-            currentState = STATE_JOG;
-            motorOn = true;
-            startJog();
-          }
-          break;
-
-        default:
-          break;
+    case EVT_JOG_START:
+      if (currentState != STATE_RUN)
+      {
+        currentState = STATE_JOG;
+        motorOn = true;
+        startJog();
       }
       break;
 
-    //---------------- RUN ----------------
-    case STATE_RUN:
-      switch (e) {
-        case EVT_START_PAUSE:
-          motorRotations = getRotationsRemaining();
-          displayValue = motorRotations;
+    default:
+      break;
+    }
+    break;
 
-          resetAfterStop = false;
-          stopMotion();
-          break;
+  //---------------- RUN ----------------
+  case STATE_RUN:
+    switch (e)
+    {
+    case EVT_START_PAUSE:
+      motorRotations = getRotationsRemaining();
+      displayValue = motorRotations;
 
-        case EVT_STOP_RESET:
-          // Full stop/reset
-          motorOn = false;
-          stopMotion();
+      resetAfterStop = false;
+      stopMotion();
+      break;
 
-          motorRotations = 0;
-          displayValue = 0;
-          displayFlag = false;
+    case EVT_STOP_RESET:
+      // Full stop/reset
+      stopMotion();
 
-          currentState = STATE_IDLE;
-          break;
+      displayValue = 0;
+      displayFlag = false;
+      resetAfterStop = true;
 
-        default:
-          // While running, show remaining rotations
-          displayValue = getRotationsRemaining();
-          break;
+      break;
+
+    default:
+      // While running, show remaining rotations
+      displayValue = getRotationsRemaining();
+      break;
+    }
+    break;
+
+  //---------------- JOG ----------------
+  case STATE_JOG:
+    switch (e)
+    {
+
+    case EVT_JOG_STOP:
+      if (currentState == STATE_JOG)
+      {
+        stopJog(); // this should start deceleration
       }
       break;
 
-    //---------------- JOG ----------------
-    case STATE_JOG:
-      switch (e) {
-
-
-
-        case EVT_JOG_STOP:
-          if (currentState == STATE_JOG) {
-            stopJog();  // this should start deceleration
-          }
-          break;
-
-        default:
-          break;
-      }
+    default:
       break;
+    }
+    break;
   }
 }
 
 // Motor running code
 // MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE
-void setupPulseTimer(uint16_t ccmpInitial) {
-  TCB0.CTRLB = TCB_CNTMODE_INT_gc;  // Periodic
+void setupPulseTimer(uint16_t ccmpInitial)
+{
+  TCB0.CTRLB = TCB_CNTMODE_INT_gc; // Periodic
   TCB0.CCMP = ccmpInitial;
   TCB0.INTCTRL = TCB_CAPT_bm;
-  TCB0.CTRLA = TCB_CLKSEL_CLKDIV1_gc;  // Not enabled yet
+  TCB0.CTRLA = TCB_CLKSEL_CLKDIV1_gc; // Not enabled yet
 }
 
 // Pulse counting ISR. Also handles stopping after target reached
-ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
+ISR(TCB0_INT_vect)
+{ // This has to trigger twice to get 1 pulse
 
-  if (!motorOn) {  // Leave if motor not on
+  if (!motorOn)
+  { // Leave if motor not on
     TCB0.INTFLAGS = TCB_CAPT_bm;
     return;
   }
@@ -455,18 +489,21 @@ ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
   digitalWrite(MOTOR_PUL, pulseLevel);
   pulseLevel = !pulseLevel;
 
-  if (pulseLevel && currentState != STATE_JOG) {  // count full pulses only and not when in jog mode
+  if (pulseLevel && currentState != STATE_JOG)
+  { // count full pulses only and not when in jog mode
     sentPulses++;
-    if (sentPulses >= decelStartPulse) {
+    if (sentPulses >= decelStartPulse)
+    {
       rampDecel = true;
     }
 
-    if (sentPulses >= targetPulses) {
+    if (sentPulses >= targetPulses)
+    {
       motorOn = false;
       currentState = STATE_IDLE;
       displayValue = 0;
       motorRotations = 0;
-      displayFlag = true;  // Display just centre segments
+      displayFlag = true; // Display just centre segments
       TCB0.CTRLA &= ~TCB_ENABLE_bm;
       digitalWrite(MOTOR_ENA, LOW);
     }
@@ -475,7 +512,8 @@ ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
   TCB0.INTFLAGS = TCB_CAPT_bm;
 }
 
-void setMotorFrequency(float freqHz) {
+void setMotorFrequency(float freqHz)
+{
   if (freqHz < 1.0)
     freqHz = 1.0;
 
@@ -492,7 +530,7 @@ void setMotorFrequency(float freqHz) {
   float interruptFreqHz = freqHz * 2.0;
 
   uint32_t ccmp =
-    (uint32_t)(F_CPU / interruptFreqHz);
+      (uint32_t)(F_CPU / interruptFreqHz);
 
   if (ccmp > 65535)
     ccmp = 65535;
@@ -503,14 +541,17 @@ void setMotorFrequency(float freqHz) {
   TCB0.CCMP = (uint16_t)ccmp;
 }
 
-void updateMotorRamp() {
+void updateMotorRamp()
+{
   if (!motorOn)
     return;
   // DECELERATION
-  if (rampDecel) {
-    currentFreqHz -= RUN_DECEL_STEP_HZ;
+  if (rampDecel)
+  {
+    currentFreqHz -= MOTOR_DECEL_STEP_HZ;
 
-    if (currentFreqHz <= START_FREQ_HZ) {
+    if (currentFreqHz <= START_FREQ_HZ)
+    {
       currentFreqHz = START_FREQ_HZ;
 
       motorOn = false;
@@ -525,13 +566,17 @@ void updateMotorRamp() {
 
   // NORMAL ACCELERATION
   // ================= RUN =================
-  if (currentState == STATE_RUN) {
-    if (rampDecel) {
-      currentFreqHz -= RUN_DECEL_STEP_HZ;
+  if (currentState == STATE_RUN)
+  {
+    if (rampDecel)
+    {
+      currentFreqHz -= MOTOR_DECEL_STEP_HZ;
 
       if (currentFreqHz < START_FREQ_HZ)
         currentFreqHz = START_FREQ_HZ;
-    } else {
+    }
+    else
+    {
       currentFreqHz += RUN_ACCEL_STEP_HZ;
 
       if (currentFreqHz > RUN_FREQ_HZ)
@@ -540,7 +585,8 @@ void updateMotorRamp() {
   }
 
   // ================= JOG =================
-  else if (currentState == STATE_JOG) {
+  else if (currentState == STATE_JOG)
+  {
     currentFreqHz += RUN_ACCEL_STEP_HZ;
 
     if (currentFreqHz > JOG_FREQ_HZ)
@@ -551,13 +597,14 @@ void updateMotorRamp() {
 }
 
 // MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE
-void startMotion(uint32_t outputRevs) {
+void startMotion(uint32_t outputRevs)
+{
   noInterrupts();
 
   sentPulses = 0;
 
   targetPulses =
-    (uint32_t)outputRevs * pulsesPerRevSystemOut;
+      (uint32_t)outputRevs * pulsesPerRevSystemOut;
 
   rampDecel = false;
   currentFreqHz = START_FREQ_HZ;
@@ -569,11 +616,11 @@ void startMotion(uint32_t outputRevs) {
    * We can make this mathematically precise later.
    */
   uint32_t decelPulseCount =
-    pulsesPerRevSystemOut / 2;
+      pulsesPerRevSystemOut / 2;
 
   if (targetPulses > decelPulseCount)
     decelStartPulse =
-      targetPulses - decelPulseCount;
+        targetPulses - decelPulseCount;
   else
     decelStartPulse = 0;
 
@@ -605,7 +652,8 @@ void startMotion(uint32_t outputRevs) {
 //   currentFreqHz = START_FREQ_HZ;
 // }
 
-void startJog() {
+void startJog()
+{
   noInterrupts();
 
   sentPulses = 0;
@@ -641,27 +689,31 @@ void startJog() {
 //   currentFreqHz = START_FREQ_HZ;
 // }
 
-
-void stopMotion() {
+void stopMotion()
+{
   rampDecel = true;
 }
 
-void stopJog() {
+void stopJog()
+{
   rampDecel = true;
 }
 
 // BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE      BATTERY CODE
 // BATTERY CODE  HAS DELAY SO DONT RUN DURING LOOP
-uint32_t readBatteryVoltage_mV() {
-  analogRead(BAT_PIN);  // Dummy read to allow ADC settling
+uint32_t readBatteryVoltage_mV()
+{
+  analogRead(BAT_PIN); // Dummy read to allow ADC settling
   delayMicroseconds(50);
   uint32_t raw = analogRead(BAT_PIN);
-  uint32_t v_adc_mV = raw * ADC_REF_mV / 1023UL;  // UL forces it to unsigned & long.get voltage at pin
-  return v_adc_mV * (R1 + R2) / R2;               // Convert into battery voltage
+  uint32_t v_adc_mV = raw * ADC_REF_mV / 1023UL; // UL forces it to unsigned & long.get voltage at pin
+  return v_adc_mV * (R1 + R2) / R2;              // Convert into battery voltage
 }
-uint8_t batteryPercent6S(uint32_t mV) {
+uint8_t batteryPercent6S(uint32_t mV)
+{
   // Int mV = int(readBatteryVoltage_mV());
-  for (int i = 0; i < BAT_TABLE_SIZE; i++) {
+  for (int i = 0; i < BAT_TABLE_SIZE; i++)
+  {
     if (mV >= batTable[i].mV)
       return batTable[i].percent;
   }
@@ -669,10 +721,11 @@ uint8_t batteryPercent6S(uint32_t mV) {
 }
 
 // SETUP
-void setup() {
+void setup()
+{
   // Serial
-  pinMode(STATUS_LED_PIN, OUTPUT);               // Must be done at start to not leave as input()
-  digitalWrite(STATUS_LED_PIN, STATUS_LED_VAL);  // Default display
+  pinMode(STATUS_LED_PIN, OUTPUT);              // Must be done at start to not leave as input()
+  digitalWrite(STATUS_LED_PIN, STATUS_LED_VAL); // Default display
 
   // Force values as opposed to assume default
   analogReference(VDD);
@@ -687,7 +740,7 @@ void setup() {
   digitalWrite(DIG2, HIGH);
 
   setupButtons();
-  pinMode(13, OUTPUT);  // Internal LED
+  pinMode(13, OUTPUT); // Internal LED
 
   // Setup motor pins
   pinMode(MOTOR_PUL, OUTPUT);
@@ -701,12 +754,13 @@ void setup() {
   RampTimer.setPeriod(RAMP_UPDATE_US);
 
   // Battery level
-  pinMode(BAT_PIN, INPUT);  // I Belive this is not needed for analog pins but helps readability.
-  delay(50);                // allow battery to stabalize
+  pinMode(BAT_PIN, INPUT); // I Belive this is not needed for analog pins but helps readability.
+  delay(50);               // allow battery to stabalize
   uint32_t batAvg_mV = 0;
   uint32_t batCounter_mV = 0;
   uint32_t batAvgCount = 4;
-  for (int i = 0; i < batAvgCount; i++) {  // average battery % over __ms
+  for (int i = 0; i < batAvgCount; i++)
+  { // average battery % over __ms
     delay(10);
     batCounter_mV += readBatteryVoltage_mV();
     // Serial.println(batCounter_mV);
@@ -718,23 +772,26 @@ void setup() {
   // Display battery level
   displayValue = batLvl;
   uint32_t temp = millis();
-  while (temp + 2000 > millis()) {  // Shows battery % for 2s
+  while (temp + 2000 > millis())
+  { // Shows battery % for 2s
     updateDisplay();
     // DisplayValue = batteryPercent6S();
   }
-  displayValue = motorRotations;  // Displays motor rotations (resets display to zero before proceeding)
-  displayFlag = true;             // Displays centre segments only
+  displayValue = motorRotations; // Displays motor rotations (resets display to zero before proceeding)
+  displayFlag = true;            // Displays centre segments only
   STATUS_LED_VAL = HIGH;
   digitalWrite(STATUS_LED_PIN, STATUS_LED_VAL);
 }
 
-void finishStop() {
+void finishStop()
+{
   if (motorOn || !rampDecel)
     return;
 
   digitalWrite(MOTOR_ENA, LOW);
 
-  if (resetAfterStop) {
+  if (resetAfterStop)
+  {
     motorRotations = 0;
     displayValue = 0;
     displayFlag = false;
@@ -747,9 +804,10 @@ void finishStop() {
   resetAfterStop = false;
 }
 
-void loop() {
-  updateDisplay();                         // Always runs to dispaly something
-  digitalWrite(13, motorOn ? HIGH : LOW);  // REMOVE AFTER just for debugging
+void loop()
+{
+  updateDisplay();                        // Always runs to dispaly something
+  digitalWrite(13, motorOn ? HIGH : LOW); // REMOVE AFTER just for debugging
 
   buttonUp.tick();
   buttonDown.tick();
