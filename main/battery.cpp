@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "battery.h"
+#include "display.h"
 
 // Battery Level
 const int BAT_PIN = A7; // Same as D21 (21)
@@ -71,4 +72,10 @@ void setupBattery()
 {
     pinMode(BAT_PIN, INPUT);
     analogReference(VDD);
+}
+
+void showBatteryPercentage()
+{
+    uint8_t batLvl = getBatteryPercent();
+    showTemporaryValue(batLvl, 2000);
 }
