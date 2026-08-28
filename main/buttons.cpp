@@ -50,11 +50,14 @@ void rotDirection(bool polarity) {
     handleEvent(EVT_DEC_1);
   }
 }
+void changeRot(void *context)
+{
+    ButtonInfo *info = (ButtonInfo *)context;
 
-void changeRot(void *context) {  // change target rotations by 1
-  ButtonInfo *info = (ButtonInfo *)context;
-  rotDirection(info->direction == 1);  // true = increase, false = decrease
+    rotDirection(info->direction == 1);
 }
+
+
 
 void startAccelRotChange(void *context) {
   lastTargetRotationChangeMs = millis();
@@ -81,6 +84,8 @@ void whileAccelRotChange(void *context) {
     lastTargetRotationChangeMs = now;
   }
 }
+
+
 
 void setupButtons() {
   // up/down button behaviour.

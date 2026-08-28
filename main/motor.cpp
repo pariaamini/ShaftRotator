@@ -56,10 +56,10 @@ constexpr float DECEL_STEP_HZ =
     (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / DECEL_TIME_S;
 
 // Motor pins
-const int MOTOR_PUL = 18; // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
-const int MOTOR_DIR = 19; // Pin for motor DIR-
-const int MOTOR_ENA = 20; // Pin for motor ENA-     HIGH for motor on
-const int MOTOR_ALM = 21; // Pin for motor ALM-     INPUT PIN
+const int MOTOR_PUL = 9; // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
+const int MOTOR_DIR = 10; // Pin for motor DIR-
+const int MOTOR_ENA = 11; // Pin for motor ENA-     HIGH for motor on
+const int MOTOR_ALM = 27; // Pin for motor ALM-     INPUT PIN
 
 int getRotationsRemaining()
 { // Return how many more rotations are left. This is to be displayed and will be shown as a rounded integer

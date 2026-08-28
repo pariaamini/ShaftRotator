@@ -1,138 +1,115 @@
 #include <Arduino.h>
-
-// #include <Wire.h> // for oled!!
-// #include <U8g2lib.h> // for oled!!
+#include <Wire.h>
+#include <U8g2lib.h>
 
 #include "display.h"
 #include "system.h"
-#include "battery.h"
 #include "motor.h"
 
+// -------------------- OLED --------------------
+
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled(
+  U8G2_R0,
+  SCL,
+  SDA,
+  U8X8_PIN_NONE);
+
+// -------------------- Display state --------------------
+
+int displayValue = 0;
+
+// Temporary display state
 bool temporaryDisplayActive = false;
 unsigned long temporaryDisplayStartMs = 0;
 unsigned long temporaryDisplayDurationMs = 0;
 int temporaryDisplayValue = 0;
 int valueBeforeTemporary = 0;
+bool showingBattery = false;
 
-// Original 7seg Display Code
+// -------------------- Display setup --------------------
 
-// Display Variables
-uint32_t lastRefresh = 0;
-const uint32_t refreshInterval = 3; // In ms
-bool showLeft = true;
-volatile int displayValue = 0;
+void setupDisplay() {
+  Wire.begin();
+  oled.begin();
 
-// LED segment layout for 0-9
-// Segment pins: A B C D E F G
-const byte segPins[2][7] = {
-    // Different segments for each the different digits
-    // Arduino Pin, segment letter, led pin, wire colour
-    {    // For digit 1
-     9,  // A //Pin 2 //Black
-     12, // B //Pin 6 //Blue
-     15, // C //Pin 9 //Orange
-     11, // D //Pin 5 //Purple
-     14, // E //Pin 8 //Yellow
-     10, // F //Pin 3 //White
-     8}, // G //Pin 1 //Brown
-    {    // For digit 2
-     9,  // A //Pin 2 //Black
-     14, // B //Pin 8 //Yellow
-     12, // C //Pin 6 //Blue
-     11, // D //Pin 5 //Purple
-     10, // E //Pin 3 //White
-     15, // F //Pin 9 //Orange
-     8}  // G //Pin 1 //Brown}
-};
+  updateDisplay();
+}
 
-// Digit anodes
-const int DIG1 = 16; // Left digit //Pin7 green
-const int DIG2 = 17; // Right digit //Pin4 grey
-// Common-anode segment map (0 = ON, 1 = OFF)
-const byte digits[10][7] = {
-    {0, 0, 0, 0, 0, 0, 1}, // 0
-    {1, 0, 0, 1, 1, 1, 1}, // 1
-    {0, 0, 1, 0, 0, 1, 0}, // 2
-    {0, 0, 0, 0, 1, 1, 0}, // 3
-    {1, 0, 0, 1, 1, 0, 0}, // 4
-    {0, 1, 0, 0, 1, 0, 0}, // 5
-    {0, 1, 0, 0, 0, 0, 0}, // 6
-    {0, 0, 0, 1, 1, 1, 1}, // 7
-    {0, 0, 0, 0, 0, 0, 0}, // 8
-    {0, 0, 0, 0, 1, 0, 0}  // 9
-};
-// FUNCTION DECLARATIONS
-// Displays 1 digit per call from the global varible of the displayValue. That digit is left on between calls.
+// -------------------- Draw OLED --------------------
 void updateDisplay()
 {
-  uint32_t now = millis();
-  if (now - lastRefresh < refreshInterval)
-    return;
-  lastRefresh = now; // Set last refresh to current time
+    oled.clearBuffer();
 
-  // Turn digits off
-  digitalWrite(DIG1, HIGH);
-  digitalWrite(DIG2, HIGH);
+    oled.setFont(u8g2_font_ncenB08_tr);
 
-  int activeDigit = showLeft ? 0 : 1;                                // Swaps since we want 0 for left and 1 for right
-  int digitValue = showLeft ? displayValue / 10 : displayValue % 10; // Takes the required digit out of dispalyValue to write
-
-  // For writing number to display
-  for (int i = 0; i < 7; i++)
-  {
-    digitalWrite(segPins[activeDigit][i], digits[digitValue][i] ? HIGH : LOW);
-  }
-  digitalWrite(showLeft ? DIG1 : DIG2, LOW);
-  showLeft = !showLeft;
-}
-
-void setupDisplay() // init display -> ran in setup() in main
-{
-  for (int i = 0; i < 7; i++)
-  {
-    pinMode(segPins[0][i], OUTPUT);
-  }
-
-  pinMode(DIG1, OUTPUT);
-  pinMode(DIG2, OUTPUT); 
-
-  digitalWrite(DIG1, HIGH);
-  digitalWrite(DIG2, HIGH);
-}
-
-void setDisplayValue(int value) 
-{
-  displayValue = value;
-}
-void refreshDisplayValue() 
-{
-  if (temporaryDisplayActive)
-  {
-    if (millis() - temporaryDisplayStartMs < temporaryDisplayDurationMs)
+    if (showingBattery)
     {
-      setDisplayValue(temporaryDisplayValue);
-      return;
+        oled.drawStr(38, 12, "BATTERY");
+    }
+    else
+    {
+        oled.drawStr(27, 12, "ROTATIONS");
     }
 
-    // Temporary display finished
-    temporaryDisplayActive = false;
-    setDisplayValue(valueBeforeTemporary);
-  }
+    char valueText[8];
+    snprintf(valueText, sizeof(valueText), "%d", displayValue);
 
-  if (currentState == STATE_RUN)
-  {
-    setDisplayValue(getRotationsRemaining());
-  }
+    oled.setFont(u8g2_font_logisoso32_tn);
+
+    int textWidth = oled.getStrWidth(valueText);
+    int x = (128 - textWidth) / 2;
+
+    oled.drawStr(x, 54, valueText);
+
+    oled.sendBuffer();
+}
+// -------------------- Set displayed value --------------------
+
+void setDisplayValue(int value)
+{
+    if (displayValue == value)
+        return;
+
+    displayValue = value;
+    updateDisplay();
 }
 
-void showTemporaryValue(int value, unsigned long durationMs) // primarily used to display battery %, can be used to show other things
+// -------------------- Normal display logic --------------------
+void refreshDisplayValue()
 {
-  valueBeforeTemporary = displayValue;
+    if (temporaryDisplayActive)
+    {
+        if (millis() - temporaryDisplayStartMs >= temporaryDisplayDurationMs)
+        {
+            temporaryDisplayActive = false;
+            showingBattery = false;
 
-  temporaryDisplayValue = value;
-  temporaryDisplayStartMs = millis();
-  temporaryDisplayDurationMs = durationMs;
-  temporaryDisplayActive = true;
+            displayValue = valueBeforeTemporary;
+            updateDisplay();
+        }
 
-  setDisplayValue(value);
+        return;
+    }
+
+    if (currentState == STATE_RUN)
+    {
+        setDisplayValue(getRotationsRemaining());
+    }
+}   
+
+// -------------------- Temporary display --------------------
+
+void showTemporaryValue(int value, unsigned long durationMs)
+{
+    valueBeforeTemporary = displayValue;
+
+    temporaryDisplayValue = value;
+    temporaryDisplayStartMs = millis();
+    temporaryDisplayDurationMs = durationMs;
+    temporaryDisplayActive = true;
+
+    showingBattery = true;
+
+    displayValue = temporaryDisplayValue;
+    updateDisplay();
 }

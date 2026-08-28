@@ -5,23 +5,24 @@
 #include "battery.h"
 
 void setup() {
+  Serial.begin(9600);
+
   setupStatusLEDs();
 
+  setupDisplay();
   setupButtons();
-  setupDisplay(); // CODE FOR 7SEG DISPLAY
-  setUpMotor();
   setupBattery();
+  setUpMotor();
 
-  delay(50);
-  showBatteryPercentage(); // show battery % for two seconds when turned on
+
+  showTemporaryValue(99, 2000);
 
   digitalWrite(STATUS_LED_PIN, HIGH);
 }
-
 void loop() {
-  updateDisplay(); // constant display update
-  digitalWrite(DEBUG_LED_PIN, isMotorOn() ? HIGH : LOW); // when motor is running, onboard orange light on nano turns on
-  updateButtons(); // constantly listening for button action
-  refreshDisplayValue(); 
-  finishStop(); 
+  updateButtons();
+  refreshDisplayValue();
+  finishStop();
+
+  digitalWrite(DEBUG_LED_PIN, isMotorOn() ? HIGH : LOW);
 }
