@@ -6,6 +6,7 @@
 #include "display.h"
 #include "system.h"
 #include "battery.h"
+#include "motor.h"
 
 bool temporaryDisplayActive = false;
 unsigned long temporaryDisplayStartMs = 0;
@@ -20,9 +21,6 @@ uint32_t lastRefresh = 0;
 const uint32_t refreshInterval = 3; // In ms
 bool showLeft = true;
 volatile int displayValue = 0;
-uint32_t now = 0;
-
-extern int getRotationsRemaining();
 
 // LED segment layout for 0-9
 // Segment pins: A B C D E F G
