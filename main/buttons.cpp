@@ -11,27 +11,23 @@ OneButton buttonDown(PIN_DOWN, true);
 OneButton buttonJog(PIN_JOG, true);
 OneButton buttonStart(PIN_START_PAUSE_STOP, true);
 
-struct ButtonInfo
-{
+struct ButtonInfo {
   OneButton *button;
-  int direction; // if the rotation is supposed to increase or decrease (by 1)
+  int direction;   // +1 to increase target rotations, -1 to decrease
 };
 
-ButtonInfo upInfo = {&buttonUp, 1};
-ButtonInfo downInfo = {&buttonDown, -1};
+ButtonInfo upInfo = { &buttonUp, 1 };
+ButtonInfo downInfo = { &buttonDown, -1 };
 
-void jogButtonStart()
-{
+void jogButtonStart() {
   handleEvent(EVT_JOG_START);
 }
 
-void jogButtonStop()
-{
+void jogButtonStop() {
   handleEvent(EVT_JOG_STOP);
 }
 
-void toggleStartPause()
-{
+void toggleStartPause() {
   digitalWrite(13, HIGH);
   delay(200);
   digitalWrite(13, LOW);
@@ -39,72 +35,55 @@ void toggleStartPause()
   handleEvent(EVT_START_PAUSE);
 }
 
-void stopAndReset()
-{
+void stopAndReset() {
   handleEvent(EVT_STOP_RESET);
 }
+void showBattery() {
+  handleEvent(EVT_SHOW_BATTERY);
+}
 
-// Up/Down Btn: Single Click
-void rotDirection(bool polarity)
-{
-  if (polarity)
-  { // if dir +ve, increase # of rotations by 1
+// Up/Down Btns: Single Click
+void rotDirection(bool polarity) {
+  if (polarity) {  // positive direction: increase target rotations by 1
     handleEvent(EVT_INC_1);
-  }
-  else
-  { // if dir -ve, decrease # of rotations by 1
+  } else {  // negative direction: decrease target rotations by 1
     handleEvent(EVT_DEC_1);
   }
 }
 
-void changeRot(void *context)
-{ // changes target rotations by 1
+void changeRot(void *context) {  // change target rotations by 1
   ButtonInfo *info = (ButtonInfo *)context;
-  rotDirection(info->direction == 1);
+  rotDirection(info->direction == 1);  // true = increase, false = decrease
 }
 
-void startAccelRotChange(void *context)
-{
+void startAccelRotChange(void *context) {
   lastTargetRotationChangeMs = millis();
 }
 
-void whileAccelRotChange(void *context)
-{
+void whileAccelRotChange(void *context) {
   ButtonInfo *info = (ButtonInfo *)context;
-  unsigned long buttonHeldMs = info->button->getPressedMs(); // how long the button has been held
-  unsigned long now = millis();                              // current time
-  unsigned long timeBetweenRotValueChangesMs;                // how quick the amount of rotations is changing
+  unsigned long buttonHeldMs = info->button->getPressedMs();  //  time button has been held
+  unsigned long now = millis();                           
+  unsigned long timeBetweenRotValueChangesMs;                 // Current repeat interval
 
-  // Increase the repeat rate as the button is held
-  if (buttonHeldMs < 2000)
-  { // if held for < 2s, change the target rotation # by 1 every 500ms
-    timeBetweenRotValueChangesMs = 500;
-  }
-  else if (buttonHeldMs < 4000)
-  {
-    timeBetweenRotValueChangesMs = 250; // if held for < 4s, change the target rotation # by 1 every 250ms
-  }
-  else
-  {
-    timeBetweenRotValueChangesMs = 100; // if held for > 4s, change the target rotation # by 1 every 100ms
+  // Speed up rotation changes the longer the button is held
+  if (buttonHeldMs < ACCEL_STAGE_1_END_MS) {
+    timeBetweenRotValueChangesMs = ROT_CHANGE_SLOW_MS;
+  } else if (buttonHeldMs < ACCEL_STAGE_2_END_MS) {
+    timeBetweenRotValueChangesMs = ROT_CHANGE_MEDIUM_MS;
+  } else {
+    timeBetweenRotValueChangesMs = ROT_CHANGE_FAST_MS;
   }
 
-  // Change target rotation # by 1 when timeBetweenRotValueChangesMs is surpassed
-  if (now - lastTargetRotationChangeMs >= timeBetweenRotValueChangesMs)
-  {
+  // Change the target rotation once the current repeat interval has passed
+  if (now - lastTargetRotationChangeMs >= timeBetweenRotValueChangesMs) {
     rotDirection(info->direction == 1);
     lastTargetRotationChangeMs = now;
   }
 }
 
-void showBattery()
-{
-  handleEvent(EVT_SHOW_BATTERY);
-}
-
-void setupButtons()
-{
-  // up/down button behaviour
+void setupButtons() {
+  // up/down button behaviour.
   buttonUp.attachClick(changeRot, &upInfo);
   buttonUp.attachLongPressStart(startAccelRotChange, &upInfo);
   buttonUp.attachDuringLongPress(whileAccelRotChange, &upInfo);
@@ -113,19 +92,19 @@ void setupButtons()
   buttonDown.attachLongPressStart(startAccelRotChange, &downInfo);
   buttonDown.attachDuringLongPress(whileAccelRotChange, &downInfo);
 
-  buttonUp.setPressMs(ROTATION_LONG_PRESS_MS);
+  buttonUp.setPressMs(ROTATION_LONG_PRESS_MS);  // sets how long the button has to be help before it is considered a "long press"
   buttonDown.setPressMs(ROTATION_LONG_PRESS_MS);
 
-  buttonUp.setLongPressIntervalMs(BUTTON_LONG_PRESS_UPDATE_MS);
+  buttonUp.setLongPressIntervalMs(BUTTON_LONG_PRESS_UPDATE_MS);  // sets how often the DuringLongPress procedure is called while button is held
   buttonDown.setLongPressIntervalMs(BUTTON_LONG_PRESS_UPDATE_MS);
 
   // jog button behaviour
-  buttonJog.setPressMs(JOG_LONG_PRESS_MS);
   buttonJog.attachLongPressStart(jogButtonStart);
   buttonJog.attachLongPressStop(jogButtonStop);
+  buttonJog.setPressMs(JOG_LONG_PRESS_MS);
 
   buttonJog.attachDoubleClick(showBattery);
-  buttonJog.setClickMs(200);
+  buttonJog.setClickMs(JOG_DOUBLE_CLICK_DELAY_MS);
 
   // start/pause and stop behaviour
   buttonStart.attachClick(toggleStartPause);
@@ -133,8 +112,7 @@ void setupButtons()
   buttonStart.attachLongPressStart(stopAndReset);
 }
 
-void updateButtons()
-{
+void updateButtons() {
   buttonUp.tick();
   buttonDown.tick();
   buttonStart.tick();

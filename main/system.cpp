@@ -9,7 +9,6 @@ volatile SystemState currentState = STATE_IDLE;
 extern volatile bool motorOn;
 extern int motorRotations;
 extern volatile int displayValue;
-extern volatile bool displayFlag;
 extern bool resetAfterStop;
 
 extern int getRotationsRemaining();
@@ -27,13 +26,11 @@ void handleEvent(Event e)
   case EVT_INC_1:
     motorRotations = min(motorRotations + 1, 99);
     displayValue = motorRotations;
-    displayFlag = false;
     break;
 
   case EVT_DEC_1:
     motorRotations = max(motorRotations - 1, 0);
     displayValue = motorRotations;
-    displayFlag = false;
     break;
 
   case EVT_START_PAUSE:
@@ -59,7 +56,6 @@ void handleEvent(Event e)
 
   case EVT_STOP_RESET:
     displayValue = 0;
-    displayFlag = false;
 
     resetAfterStop = true;
     stopMotion();

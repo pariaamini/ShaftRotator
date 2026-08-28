@@ -111,7 +111,6 @@ ISR(TCB0_INT_vect)
             currentState = STATE_IDLE;
             setDisplayValue(0);
             motorRotations = 0;
-            setDisplayFlag(true);
             TCB0.CTRLA &= ~TCB_ENABLE_bm;
             digitalWrite(MOTOR_ENA, LOW);
         }
@@ -303,7 +302,6 @@ void finishStop()
     {
         motorRotations = 0;
         setDisplayValue(0);
-        setDisplayFlag(false);
     }
 
     currentState = STATE_IDLE;

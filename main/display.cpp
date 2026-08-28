@@ -1,24 +1,26 @@
 #include <Arduino.h>
-// #include <Wire.h>
+
+// #include <Wire.h> // for oled!!
 // #include <U8g2lib.h> // for oled!!
 
 #include "display.h"
 #include "system.h"
 #include "battery.h"
 
-// Display Variables
-uint32_t lastRefresh = 0;
-const uint32_t refreshInterval = 3; // In ms
-bool showLeft = true;
-volatile int displayValue = 0;
-volatile bool displayFlag = false; // Flag to display just centre segments 'g'
-uint32_t now = 0;
-
 bool temporaryDisplayActive = false;
 unsigned long temporaryDisplayStartMs = 0;
 unsigned long temporaryDisplayDurationMs = 0;
 int temporaryDisplayValue = 0;
 int valueBeforeTemporary = 0;
+
+// Original 7seg Display Code
+
+// Display Variables
+uint32_t lastRefresh = 0;
+const uint32_t refreshInterval = 3; // In ms
+bool showLeft = true;
+volatile int displayValue = 0;
+uint32_t now = 0;
 
 extern int getRotationsRemaining();
 
@@ -77,18 +79,6 @@ void updateDisplay()
   int activeDigit = showLeft ? 0 : 1;                                // Swaps since we want 0 for left and 1 for right
   int digitValue = showLeft ? displayValue / 10 : displayValue % 10; // Takes the required digit out of dispalyValue to write
 
-  // Enter only if wanting to show centre lines only not a number
-  if (displayFlag)
-  {
-    for (int i = 0; i < 7; i++)
-    { // Sets all segments OFF
-      digitalWrite(segPins[activeDigit][i], HIGH);
-    }
-    digitalWrite(8, LOW);                      // Set 'G' to ON
-    digitalWrite(showLeft ? DIG1 : DIG2, LOW); // Turn ON digit
-    showLeft = !showLeft;
-    return;
-  }
   // For writing number to display
   for (int i = 0; i < 7; i++)
   {
@@ -98,7 +88,7 @@ void updateDisplay()
   showLeft = !showLeft;
 }
 
-void setupDisplay()
+void setupDisplay() // init display -> ran in setup() in main
 {
   for (int i = 0; i < 7; i++)
   {
@@ -106,51 +96,45 @@ void setupDisplay()
   }
 
   pinMode(DIG1, OUTPUT);
-  pinMode(DIG2, OUTPUT);
+  pinMode(DIG2, OUTPUT); 
 
   digitalWrite(DIG1, HIGH);
   digitalWrite(DIG2, HIGH);
 }
 
-void setDisplayValue(int value)
+void setDisplayValue(int value) 
 {
   displayValue = value;
 }
-
-void setDisplayFlag(bool flag)
+void refreshDisplayValue() 
 {
-  displayFlag = flag;
-}
-
-void refreshDisplayValue()
-{
-    if (temporaryDisplayActive)
+  if (temporaryDisplayActive)
+  {
+    if (millis() - temporaryDisplayStartMs < temporaryDisplayDurationMs)
     {
-        if (millis() - temporaryDisplayStartMs < temporaryDisplayDurationMs)
-        {
-            setDisplayValue(temporaryDisplayValue);
-            return;
-        }
-
-        // Temporary display finished
-        temporaryDisplayActive = false;
-        setDisplayValue(valueBeforeTemporary);
+      setDisplayValue(temporaryDisplayValue);
+      return;
     }
 
-    if (currentState == STATE_RUN)
-    {
-        setDisplayValue(getRotationsRemaining());
-    }
+    // Temporary display finished
+    temporaryDisplayActive = false;
+    setDisplayValue(valueBeforeTemporary);
+  }
+
+  if (currentState == STATE_RUN)
+  {
+    setDisplayValue(getRotationsRemaining());
+  }
 }
 
-void showTemporaryValue(int value, unsigned long durationMs)
+void showTemporaryValue(int value, unsigned long durationMs) // primarily used to display battery %, can be used to show other things
 {
-    valueBeforeTemporary = displayValue;
+  valueBeforeTemporary = displayValue;
 
-    temporaryDisplayValue = value;
-    temporaryDisplayStartMs = millis();
-    temporaryDisplayDurationMs = durationMs;
-    temporaryDisplayActive = true;
+  temporaryDisplayValue = value;
+  temporaryDisplayStartMs = millis();
+  temporaryDisplayDurationMs = durationMs;
+  temporaryDisplayActive = true;
 
-    setDisplayValue(value);
+  setDisplayValue(value);
 }

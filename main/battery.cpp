@@ -3,11 +3,13 @@
 #include "display.h"
 #include "constants.h"
 
-struct BatPoint
+// Original Battery Code --
+struct BatPoint // Battery is nonlinear so a value table is used
 {
     uint16_t mV;
     uint8_t percent;
 };
+
 const BatPoint batTable[] = { // EYBMS fuel gauge and other online resources used to make this table. Testing of battery to verify accuracy would be recomended.
     {24600, 100},
     {24000, 90},
@@ -20,6 +22,7 @@ const BatPoint batTable[] = { // EYBMS fuel gauge and other online resources use
     {19200, 20},
     {18600, 10},
     {18000, 0}};
+
 const int BAT_TABLE_SIZE = sizeof(batTable) / sizeof(batTable[0]);
 
 uint32_t readBatteryVoltage_mV()
@@ -42,11 +45,13 @@ uint8_t batteryPercent6S(uint32_t mV)
     return 0;
 }
 
-uint8_t getBatteryPercent()
+// End of Original Battery Code
+
+uint8_t getBatteryPercent() // battery % getter. Can be called anywhere
 {
     uint32_t total_mV = 0;
 
-    constexpr int sampleCount = 4;
+    constexpr int sampleCount = 4; // takes 4 samples with a delay of 10ms
 
     for (int i = 0; i < sampleCount; i++)
     {
@@ -54,19 +59,19 @@ uint8_t getBatteryPercent()
         total_mV += readBatteryVoltage_mV();
     }
 
-    uint32_t average_mV = total_mV / sampleCount;
+    uint32_t average_mV = total_mV / sampleCount; // finds avg of 4 samples to get current battery level
 
-    return batteryPercent6S(average_mV);
+    return batteryPercent6S(average_mV); // returns current
 }
 
-void setupBattery()
+void showBatteryPercentage() // can be run at any point to show the battery voltage on the display 
+{
+    uint8_t batLvl = getBatteryPercent();
+    showTemporaryValue(batLvl, 2000); // will show for two seconds
+}
+
+void setupBattery() // battery init -> ran in setup() in main
 {
     pinMode(BAT_PIN, INPUT);
     analogReference(VDD);
-}
-
-void showBatteryPercentage()
-{
-    uint8_t batLvl = getBatteryPercent();
-    showTemporaryValue(batLvl, 2000);
 }

@@ -4,7 +4,6 @@ void setupDisplay();
 void updateDisplay();
 
 void setDisplayValue(int value);
-void setDisplayFlag(bool flag);
 
 void refreshDisplayValue();
 
