@@ -18,7 +18,7 @@ constexpr uint8_t PIN_START_PAUSE_STOP = 4; // aligns to button labeled +5  on r
 
 
 // Button timing
-constexpr unsigned long ROTATION_LONG_PRESS_MS = 1000;    // btn hold time before +/- long press procedure starts
+constexpr unsigned long ROTATION_LONG_PRESS_MS = 500;    // btn hold time before +/- long press procedure starts
 constexpr unsigned long BUTTON_LONG_PRESS_UPDATE_MS = 10; // how often the long press procedure runs when btn is held
 constexpr unsigned long JOG_LONG_PRESS_MS = 500;          // btn hold time before jog procedure starts
 constexpr unsigned long JOG_DOUBLE_CLICK_DELAY_MS = 200;  // max time between clicks to register as a double-click
@@ -32,12 +32,13 @@ constexpr unsigned long STOP_LONG_PRESS_MS = 2000;        // btn hold time befor
 // As +/- is held, target rotation changes faster
 // ACCEL_STAGE constants define when the speed changes
 // ROT_CHANGE constants define how often the target rotation changes by 1
-constexpr unsigned long ACCEL_STAGE_1_END_MS = 2000; // Slow speed ends after 2s
-constexpr unsigned long ACCEL_STAGE_2_END_MS = 4000; // Medium speed ends after 4s
 
-constexpr unsigned long ROT_CHANGE_SLOW_MS = 500;   // change by 1 every 500ms
-constexpr unsigned long ROT_CHANGE_MEDIUM_MS = 250; //  change by 1 every 250ms
-constexpr unsigned long ROT_CHANGE_FAST_MS = 100;   // change by 1 every 100ms
+constexpr unsigned long ACCEL_STAGE_1_END_MS = 1000; // slow speed ends after 1s
+constexpr unsigned long ACCEL_STAGE_2_END_MS = 2000; // medium speed ends after 2s
+
+constexpr unsigned long ROT_CHANGE_SLOW_MS = 350;   // change by 1 every 350ms
+constexpr unsigned long ROT_CHANGE_MEDIUM_MS = 150; //  change by 1 every 150ms
+constexpr unsigned long ROT_CHANGE_FAST_MS = 80;   // change by 1 every 80ms
 
 
 
