@@ -20,15 +20,15 @@ extern void stopJog();
 void handleEvent(Event e) {
   switch (e) {
 
-      case EVT_INC_1:
-        motorRotations = min(motorRotations + 1, 99);
-        setDisplayValue(motorRotations);
-        break;
+    case EVT_INC_1:
+      motorRotations = min(motorRotations + 1, 99);
+      setDisplayValue(motorRotations);
+      break;
 
-      case EVT_DEC_1:
-        motorRotations = max(motorRotations - 1, 0);
-        setDisplayValue(motorRotations);
-        break;
+    case EVT_DEC_1:
+      motorRotations = max(motorRotations - 1, 0);
+      setDisplayValue(motorRotations);
+      break;
 
     case EVT_START_PAUSE:
       if (motorRotations == 0 || currentState == STATE_JOG) {  // if 0 rotations or in jogging mode
@@ -39,7 +39,7 @@ void handleEvent(Event e) {
         startMotion(motorRotations);
       } else if (currentState == STATE_RUN) {  // if running, pause the motor
         motorRotations = getRotationsRemaining();
-setDisplayValue(motorRotations);
+        setDisplayValue(motorRotations);
         resetAfterStop = false;
         stopMotion();
         currentState = STATE_PAUSE;
@@ -47,7 +47,7 @@ setDisplayValue(motorRotations);
       break;
 
     case EVT_STOP_RESET:
-setDisplayValue(0);
+      setDisplayValue(0);
       resetAfterStop = true;
       stopMotion();
       break;

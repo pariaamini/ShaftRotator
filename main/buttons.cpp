@@ -13,7 +13,7 @@ OneButton buttonStart(PIN_START_PAUSE_STOP, true);
 
 struct ButtonInfo {
   OneButton *button;
-  int direction;   // +1 to increase target rotations, -1 to decrease
+  int direction;  // +1 to increase target rotations, -1 to decrease
 };
 
 ButtonInfo upInfo = { &buttonUp, 1 };
@@ -50,14 +50,11 @@ void rotDirection(bool polarity) {
     handleEvent(EVT_DEC_1);
   }
 }
-void changeRot(void *context)
-{
-    ButtonInfo *info = (ButtonInfo *)context;
+void changeRot(void *context) {
+  ButtonInfo *info = (ButtonInfo *)context;
 
-    rotDirection(info->direction == 1);
+  rotDirection(info->direction == 1);
 }
-
-
 
 void startAccelRotChange(void *context) {
   lastTargetRotationChangeMs = millis();
@@ -66,8 +63,8 @@ void startAccelRotChange(void *context) {
 void whileAccelRotChange(void *context) {
   ButtonInfo *info = (ButtonInfo *)context;
   unsigned long buttonHeldMs = info->button->getPressedMs();  //  time button has been held
-  unsigned long now = millis();                           
-  unsigned long timeBetweenRotValueChangesMs;                 // Current repeat interval
+  unsigned long now = millis();
+  unsigned long timeBetweenRotValueChangesMs;  // Current repeat interval
 
   // Speed up rotation changes the longer the button is held
   if (buttonHeldMs < ACCEL_STAGE_1_END_MS) {
@@ -84,8 +81,6 @@ void whileAccelRotChange(void *context) {
     lastTargetRotationChangeMs = now;
   }
 }
-
-
 
 void setupButtons() {
   // up/down button behaviour.

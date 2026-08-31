@@ -2,16 +2,14 @@
 
 #include "constants.h"
 
-enum SystemState
-{
+enum SystemState {
   STATE_IDLE,
   STATE_RUN,
   STATE_JOG,
   STATE_PAUSE
 
 };
-enum Event
-{
+enum Event {
   EVT_NONE,
   EVT_INC_1,
   EVT_DEC_1,

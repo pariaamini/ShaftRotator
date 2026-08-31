@@ -6,15 +6,12 @@
 #include "system.h"
 #include "motor.h"
 
-// -------------------- OLED --------------------
-
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled(
   U8G2_R0,
   SCL,
   SDA,
   U8X8_PIN_NONE);
 
-// -------------------- Display state --------------------
 
 int displayValue = 0;
 
@@ -26,8 +23,6 @@ int temporaryDisplayValue = 0;
 int valueBeforeTemporary = 0;
 bool showingBattery = false;
 
-// -------------------- Display setup --------------------
-
 void setupDisplay() {
   Wire.begin();
   oled.begin();
@@ -35,81 +30,66 @@ void setupDisplay() {
   updateDisplay();
 }
 
-// -------------------- Draw OLED --------------------
-void updateDisplay()
-{
-    oled.clearBuffer();
+void updateDisplay() {
+  oled.clearBuffer();
 
-    oled.setFont(u8g2_font_ncenB08_tr);
+  oled.setFont(u8g2_font_ncenB08_tr);
 
-    if (showingBattery)
-    {
-        oled.drawStr(38, 12, "BATTERY");
-    }
-    else
-    {
-        oled.drawStr(27, 12, "ROTATIONS");
-    }
+  if (showingBattery) {
+    oled.drawStr(38, 12, "BATTERY");
+  } else {
+    oled.drawStr(27, 12, "ROTATIONS");
+  }
 
-    char valueText[8];
-    snprintf(valueText, sizeof(valueText), "%d", displayValue);
+  char valueText[8];
+  snprintf(valueText, sizeof(valueText), "%d", displayValue);
 
-    oled.setFont(u8g2_font_logisoso32_tn);
+  oled.setFont(u8g2_font_logisoso32_tn);
 
-    int textWidth = oled.getStrWidth(valueText);
-    int x = (128 - textWidth) / 2;
+  int textWidth = oled.getStrWidth(valueText);
+  int x = (128 - textWidth) / 2;
 
-    oled.drawStr(x, 54, valueText);
+  oled.drawStr(x, 54, valueText);
 
-    oled.sendBuffer();
-}
-// -------------------- Set displayed value --------------------
-
-void setDisplayValue(int value)
-{
-    if (displayValue == value)
-        return;
-
-    displayValue = value;
-    updateDisplay();
+  oled.sendBuffer();
 }
 
-// -------------------- Normal display logic --------------------
-void refreshDisplayValue()
-{
-    if (temporaryDisplayActive)
-    {
-        if (millis() - temporaryDisplayStartMs >= temporaryDisplayDurationMs)
-        {
-            temporaryDisplayActive = false;
-            showingBattery = false;
+void setDisplayValue(int value) {  // display value setter
+  if (displayValue == value)
+    return;
 
-            displayValue = valueBeforeTemporary;
-            updateDisplay();
-        }
+  displayValue = value;
+  updateDisplay();
+}
 
-        return;
+void refreshDisplayValue() {  // runs periodically in main.
+  if (temporaryDisplayActive) {
+    if (millis() - temporaryDisplayStartMs >= temporaryDisplayDurationMs) {
+      temporaryDisplayActive = false;
+      showingBattery = false;
+
+      displayValue = valueBeforeTemporary;
+      updateDisplay();
     }
 
-    if (currentState == STATE_RUN)
-    {
-        setDisplayValue(getRotationsRemaining());
-    }
-}   
+    return;
+  }
 
-// -------------------- Temporary display --------------------
+  if (currentState == STATE_RUN) {
+    setDisplayValue(getRotationsRemaining());
+  }
+}
 
-void showTemporaryValue(int value, unsigned long durationMs)
-{
-    valueBeforeTemporary = displayValue;
+void showTemporaryValue(int value, unsigned long durationMs) {
+  valueBeforeTemporary = displayValue;
 
-    temporaryDisplayValue = value;
-    temporaryDisplayStartMs = millis();
-    temporaryDisplayDurationMs = durationMs;
-    temporaryDisplayActive = true;
+  temporaryDisplayValue = value;
+  temporaryDisplayStartMs = millis();
+  temporaryDisplayDurationMs = durationMs;
+  temporaryDisplayActive = true;
 
-    showingBattery = true;
+  showingBattery = true;
 
-    displayValue = temporaryDisplayValue;
-    updateDisplay();
+  displayValue = temporaryDisplayValue;
+  updateDisplay();
 }
