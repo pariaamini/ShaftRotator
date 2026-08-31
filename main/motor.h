@@ -15,3 +15,7 @@ int getRotationsRemaining();
 void updateMotorRamp();
 
 bool isMotorOn();
+void resumeMotion();
+void printMotionPosition(const char *label);
+
+int getRotationTenthsRemaining();

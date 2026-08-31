@@ -119,10 +119,10 @@ void refreshDisplayValue()
     setDisplayValue(valueBeforeTemporary);
   }
 
-  if (currentState == STATE_RUN)
-  {
-    setDisplayValue(getRotationsRemaining());
-  }
+ if (currentState == STATE_RUN)
+{
+    setDisplayValue(getRotationTenthsRemaining());
+}
 }
 
 void showTemporaryValue(int value, unsigned long durationMs) // primarily used to display battery %, can be used to show other things

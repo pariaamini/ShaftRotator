@@ -26,20 +26,26 @@ volatile bool rampDecel = false;
 // ================= MOTOR SPEED SETTINGS =================
 
 // Motor pulse frequency at startup
-constexpr float START_FREQ_HZ = 300.0;
+constexpr float START_FREQ_HZ = 300.0; //300.0
 
 // Normal run speed
-constexpr float RUN_FREQ_HZ = 9000.0;
+constexpr float RUN_FREQ_HZ = 9000.0; // 9000.0
 
 // Jog speed
-constexpr float JOG_FREQ_HZ = 7000.0;
+constexpr float JOG_FREQ_HZ = 7000.0; // 7000.0
+
+
+
+// RUN_FREQ_HZ = 25200;
+// ACCEL_TIME_MS = 500;
+// DECEL_TIME_MS = 500;
 
 // Ramp update interval
 constexpr unsigned long RAMP_UPDATE_US = 10000; // 10 ms
 
 // How long acceleration/deceleration should take
-constexpr float ACCEL_TIME_S = 2.0;
-constexpr float DECEL_TIME_S = 1.0;
+constexpr float ACCEL_TIME_S = 2.0; //2.0
+constexpr float DECEL_TIME_S = 1.0; //1.0
 
 // ================= RAMP STATE =================
 
@@ -74,6 +80,22 @@ int getRotationsRemaining()
     return ((remaining + pulsesPerRevSystemOut - 1) / (pulsesPerRevSystemOut));
 }
 
+int getRotationTenthsRemaining()
+{
+    noInterrupts();
+    uint32_t sent = sentPulses;
+    uint32_t target = targetPulses;
+    interrupts();
+
+    if (sent >= target)
+        return 0;
+
+    uint32_t remaining = target - sent;
+
+    return (remaining * 10UL + pulsesPerRevSystemOut - 1)
+           / pulsesPerRevSystemOut;
+}
+
 // Motor running code
 // MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE
 void setupPulseTimer(uint16_t ccmpInitial)
@@ -106,14 +128,12 @@ ISR(TCB0_INT_vect)
         }
 
         if (sentPulses >= targetPulses)
-        {
-            motorOn = false;
-            currentState = STATE_IDLE;
-            setDisplayValue(0);
-            motorRotations = 0;
-            TCB0.CTRLA &= ~TCB_ENABLE_bm;
-            digitalWrite(MOTOR_ENA, LOW);
-        }
+{
+    motorOn = false;
+    motorRotations = 0;
+    TCB0.CTRLA &= ~TCB_ENABLE_bm;
+    digitalWrite(MOTOR_ENA, LOW);
+}
     }
 
     TCB0.INTFLAGS = TCB_CAPT_bm;
@@ -239,6 +259,28 @@ void startMotion(uint32_t outputRevs)
     interrupts();
 }
 
+void resumeMotion()
+{
+    noInterrupts();
+
+    rampDecel = false;
+    currentFreqHz = START_FREQ_HZ;
+
+    setMotorFrequency(currentFreqHz);
+
+    motorOn = true;
+
+    digitalWrite(MOTOR_PUL, LOW);
+    pulseLevel = LOW;
+
+    digitalWrite(MOTOR_ENA, HIGH);
+
+    TCB0.CTRLA |= TCB_ENABLE_bm;
+
+    interrupts();
+}
+
+
 void startJog()
 {
     noInterrupts();
@@ -277,6 +319,8 @@ bool isMotorOn()
     return motorOn;
 }
 
+
+
 void setUpMotor()
 {
     pinMode(MOTOR_PUL, OUTPUT);
@@ -302,9 +346,13 @@ void finishStop()
     {
         motorRotations = 0;
         setDisplayValue(0);
+        currentState = STATE_IDLE;
+    }
+    else if (currentState != STATE_PAUSE)
+    {
+        currentState = STATE_IDLE;
     }
 
-    currentState = STATE_IDLE;
     currentFreqHz = START_FREQ_HZ;
     rampDecel = false;
     resetAfterStop = false;

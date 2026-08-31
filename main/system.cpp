@@ -3,6 +3,7 @@
 #include "display.h"
 #include "battery.h"
 #include "display.h"
+#include "motor.h"
 
 volatile SystemState currentState = STATE_IDLE;
 
@@ -34,24 +35,29 @@ void handleEvent(Event e)
     break;
 
   case EVT_START_PAUSE:
+
     if (motorRotations == 0 || currentState == STATE_JOG)
-    { // if 0 rotations or in jogging mode
-      break;
+    {
+        break;
     }
-    else if (currentState == STATE_IDLE || currentState == STATE_PAUSE)
-    { // if idle or paused, start the motor
-      motorOn = true;
-      currentState = STATE_RUN;
-      startMotion(motorRotations);
+
+    if (currentState == STATE_IDLE)
+    {
+        currentState = STATE_RUN;
+        startMotion(motorRotations);
+    }
+    else if (currentState == STATE_PAUSE)
+    {
+        currentState = STATE_RUN;
+        resumeMotion();
     }
     else if (currentState == STATE_RUN)
-    { // if running, pause the motor
-      motorRotations = getRotationsRemaining();
-      displayValue = motorRotations;
-      resetAfterStop = false;
-      stopMotion();
-      currentState = STATE_PAUSE;
+    {
+        resetAfterStop = false;
+        currentState = STATE_PAUSE;
+        stopMotion();
     }
+
     break;
 
   case EVT_STOP_RESET:
@@ -82,7 +88,7 @@ void handleEvent(Event e)
     showTemporaryValue(getBatteryPercent(), 2000);
     break;
   }
-  }
+  } 
 }
 
 void setupStatusLEDs()
