@@ -1,10 +1,6 @@
 #include <Arduino.h>
 #include "battery.h"
 #include "display.h"
-return battery
-1 result in 1 file
-1
-
 #include "constants.h"
 
 // Original Battery Code --
