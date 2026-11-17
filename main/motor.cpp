@@ -8,11 +8,11 @@
 #define RampTimer TimerB2
 
 // NEW MOTOR VARIABLES
-volatile bool motorOn = false; // LED state will mimic motor
+volatile bool motorOn = false;  // LED state will mimic motor
 int motorRotations = 0;
-const int MOTOR_GEAR_RATIO = 10;  // JKong gear reduction
-const int SYSTEM_GEAR_RATIO = 63; // External reduction only
-int pulsesPerRev = 200;           // Dip switch setting off,off,off,off     Section 5.1 in motor manual
+const int MOTOR_GEAR_RATIO = 10;   // JKong gear reduction
+const int SYSTEM_GEAR_RATIO = 63;  // External reduction only
+int pulsesPerRev = 200;            // Dip switch setting off,off,off,off     Section 5.1 in motor manual
 uint32_t pulsesPerRevMotorOut = MOTOR_GEAR_RATIO * pulsesPerRev;
 const uint32_t pulsesPerRevSystemOut = pulsesPerRevMotorOut * SYSTEM_GEAR_RATIO;
 volatile bool pulseLevel = LOW;
@@ -22,7 +22,7 @@ volatile uint32_t targetPulses = 0;
 volatile uint32_t decelStartPulse = 0;
 
 volatile bool rampDecel = false;
-
+volatile bool rotationJustCompleted = false;
 // ================= MOTOR SPEED SETTINGS =================
 
 // Motor pulse frequency at startup
@@ -41,7 +41,7 @@ constexpr float JOG_FREQ_HZ = 7000.0; // 7000.0
 // DECEL_TIME_MS = 500;
 
 // Ramp update interval
-constexpr unsigned long RAMP_UPDATE_US = 10000; // 10 ms
+constexpr unsigned long RAMP_UPDATE_US = 10000;  // 10 ms
 
 // How long acceleration/deceleration should take
 constexpr float ACCEL_TIME_S = 2.0; //2.0
@@ -53,31 +53,35 @@ volatile float currentFreqHz = START_FREQ_HZ;
 volatile bool resetAfterStop = false;
 
 constexpr float RAMP_UPDATE_S =
-    RAMP_UPDATE_US / 1000000.0;
+  RAMP_UPDATE_US / 1000000.0;
 
 constexpr float ACCEL_STEP_HZ =
-    (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / ACCEL_TIME_S;
+  (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / ACCEL_TIME_S;
 
 constexpr float DECEL_STEP_HZ =
-    (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / DECEL_TIME_S;
+  (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / DECEL_TIME_S;
 
-// Motor pins
-const int MOTOR_PUL = 18; // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
-const int MOTOR_DIR = 19; // Pin for motor DIR-
-const int MOTOR_ENA = 20; // Pin for motor ENA-     HIGH for motor on
-const int MOTOR_ALM = 21; // Pin for motor ALM-     INPUT PIN
+// // Motor pins
+// const int MOTOR_PUL = 9;   // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
+// const int MOTOR_DIR = 10;  // Pin for motor DIR-
+// const int MOTOR_ENA = 11;  // Pin for motor ENA-     HIGH for motor on
+// const int MOTOR_ALM = 27;  // Pin for motor ALM-     INPUT PIN
 
-int getRotationsRemaining()
-{ // Return how many more rotations are left. This is to be displayed and will be shown as a rounded integer
-    // Pulse Counter Based
-    noInterrupts(); // Makes sure values dont get changed as they are read. this should not take more than a couple micros so not a problem
-    uint32_t sent = sentPulses;
-    uint32_t target = targetPulses;
-    interrupts();
-    if (sent >= target)
-        return 0; // If at the end do not waste CPU time on math
-    uint32_t remaining = target - sent;
-    return ((remaining + pulsesPerRevSystemOut - 1) / (pulsesPerRevSystemOut));
+const int MOTOR_PUL = 6;
+const int MOTOR_DIR = 7;
+const int MOTOR_ENA = 8;
+const int MOTOR_ALM = 27;
+
+int getRotationsRemaining() {  // Return how many more rotations are left. This is to be displayed and will be shown as a rounded integer
+  // Pulse Counter Based
+  noInterrupts();  // Makes sure values dont get changed as they are read. this should not take more than a couple micros so not a problem
+  uint32_t sent = sentPulses;
+  uint32_t target = targetPulses;
+  interrupts();
+  if (sent >= target)
+    return 0;  // If at the end do not waste CPU time on math
+  uint32_t remaining = target - sent;
+  return ((remaining + pulsesPerRevSystemOut - 1) / (pulsesPerRevSystemOut));
 }
 
 int getRotationTenthsRemaining()
@@ -98,53 +102,52 @@ int getRotationTenthsRemaining()
 
 // Motor running code
 // MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE      MOTOR TIMER CODE
-void setupPulseTimer(uint16_t ccmpInitial)
-{
-    TCB0.CTRLB = TCB_CNTMODE_INT_gc; // Periodic
-    TCB0.CCMP = ccmpInitial;
-    TCB0.INTCTRL = TCB_CAPT_bm;
-    TCB0.CTRLA = TCB_CLKSEL_CLKDIV1_gc; // Not enabled yet
+void setupPulseTimer(uint16_t ccmpInitial) {
+  TCB0.CTRLB = TCB_CNTMODE_INT_gc;  // Periodic
+  TCB0.CCMP = ccmpInitial;
+  TCB0.INTCTRL = TCB_CAPT_bm;
+  TCB0.CTRLA = TCB_CLKSEL_CLKDIV1_gc;  // Not enabled yet
 }
 
 // Pulse counting ISR. Also handles stopping after target reached
-ISR(TCB0_INT_vect)
-{ // This has to trigger twice to get 1 pulse
+ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
 
-    if (!motorOn)
-    { // Leave if motor not on
-        TCB0.INTFLAGS = TCB_CAPT_bm;
-        return;
-    }
-
-    digitalWrite(MOTOR_PUL, pulseLevel);
-    pulseLevel = !pulseLevel;
-
-    if (pulseLevel && currentState != STATE_JOG)
-    { // count full pulses only and not when in jog mode
-        sentPulses++;
-        if (sentPulses >= decelStartPulse)
-        {
-            rampDecel = true;
-        }
-
-        if (sentPulses >= targetPulses)
-{
-    motorOn = false;
-    motorRotations = 0;
-    TCB0.CTRLA &= ~TCB_ENABLE_bm;
-    digitalWrite(MOTOR_ENA, LOW);
-}
-    }
-
+  if (!motorOn) {  // Leave if motor not on
     TCB0.INTFLAGS = TCB_CAPT_bm;
+    return;
+  }
+
+  digitalWrite(MOTOR_PUL, pulseLevel);
+  pulseLevel = !pulseLevel;
+
+  if (pulseLevel && currentState != STATE_JOG) {  // count full pulses only and not when in jog mode
+    sentPulses++;
+    if (sentPulses >= decelStartPulse) {
+      rampDecel = true;
+    }
+
+    // if (sentPulses >= targetPulses) {
+    //   motorOn = false;
+    //   currentState = STATE_IDLE;
+    //   motorRotations = 0;
+    //   TCB0.CTRLA &= ~TCB_ENABLE_bm;
+    // }
+    if (sentPulses >= targetPulses) {
+      motorOn = false;
+      rotationJustCompleted = true;
+
+      TCB0.CTRLA &= ~TCB_ENABLE_bm;
+    }
+  }
+
+  TCB0.INTFLAGS = TCB_CAPT_bm;
 }
 
-void setMotorFrequency(float freqHz)
-{
-    if (freqHz < 1.0)
-        freqHz = 1.0;
+void setMotorFrequency(float freqHz) {
+  if (freqHz < 1.0)
+    freqHz = 1.0;
 
-    /*
+  /*
      * TCB0 interrupt toggles MOTOR_PUL every interrupt.
      *
      * Therefore:
@@ -154,109 +157,105 @@ void setMotorFrequency(float freqHz)
      * timerInterruptFrequency = motorPulseFrequency * 2
      */
 
-    float interruptFreqHz = freqHz * 2.0;
+  float interruptFreqHz = freqHz * 2.0;
 
-    uint32_t ccmp =
-        (uint32_t)(F_CPU / interruptFreqHz);
+  uint32_t ccmp =
+    (uint32_t)(F_CPU / interruptFreqHz);
 
-    if (ccmp > 65535)
-        ccmp = 65535;
+  if (ccmp > 65535)
+    ccmp = 65535;
 
-    if (ccmp < 1)
-        ccmp = 1;
+  if (ccmp < 1)
+    ccmp = 1;
 
-    TCB0.CCMP = (uint16_t)ccmp;
+  TCB0.CCMP = (uint16_t)ccmp;
 }
 
-void updateMotorRamp()
-{
-    if (!motorOn)
-    {
-        return;
+void updateMotorRamp() {
+  if (!motorOn) {
+    return;
+  }
+
+  // DECELERATION
+ if (rampDecel) {
+  currentFreqHz -= DECEL_STEP_HZ;
+
+  if (currentFreqHz <= START_FREQ_HZ) {
+    currentFreqHz = START_FREQ_HZ;
+
+    if (currentState == STATE_RUN && !resetAfterStop) {
+      // Continue at minimum speed until target is reached.
+      // Never restart acceleration.
+      setMotorFrequency(currentFreqHz);
+      return;
     }
 
-    // DECELERATION
-    if (rampDecel)
-    {
-        currentFreqHz -= DECEL_STEP_HZ;
+    motorOn = false;
+    TCB0.CTRLA &= ~TCB_ENABLE_bm;
+    return;
+  }
 
-        if (currentFreqHz <= START_FREQ_HZ)
-        {
-            currentFreqHz = START_FREQ_HZ;
+  setMotorFrequency(currentFreqHz);
+  return;
+}
+  // NORMAL ACCELERATION
+  // ================= RUN =================
+  if (currentState == STATE_RUN) {
 
-            motorOn = false;
-            TCB0.CTRLA &= ~TCB_ENABLE_bm;
+    currentFreqHz += ACCEL_STEP_HZ;
 
-            return;
-        }
+    if (currentFreqHz > RUN_FREQ_HZ)
+      currentFreqHz = RUN_FREQ_HZ;
+  }
 
-        setMotorFrequency(currentFreqHz);
-        return;
-    }
+  // ================= JOG =================
+  else if (currentState == STATE_JOG) {
+    currentFreqHz += ACCEL_STEP_HZ;
 
-    // NORMAL ACCELERATION
-    // ================= RUN =================
-    if (currentState == STATE_RUN)
-    {
+    if (currentFreqHz > JOG_FREQ_HZ)
+      currentFreqHz = JOG_FREQ_HZ;
+  }
 
-        currentFreqHz += ACCEL_STEP_HZ;
-
-        if (currentFreqHz > RUN_FREQ_HZ)
-            currentFreqHz = RUN_FREQ_HZ;
-    }
-
-    // ================= JOG =================
-    else if (currentState == STATE_JOG)
-    {
-        currentFreqHz += ACCEL_STEP_HZ;
-
-        if (currentFreqHz > JOG_FREQ_HZ)
-            currentFreqHz = JOG_FREQ_HZ;
-    }
-
-    setMotorFrequency(currentFreqHz);
+  setMotorFrequency(currentFreqHz);
 }
 
 // MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE       MOTOR START/STOP CODE
-void startMotion(uint32_t outputRevs)
-{
-    noInterrupts();
+void startMotion(uint32_t outputRevs) {
+  noInterrupts();
 
-    sentPulses = 0;
+  sentPulses = 0;
 
-    targetPulses =
-        (uint32_t)outputRevs * pulsesPerRevSystemOut;
+  targetPulses =
+    (uint32_t)outputRevs * pulsesPerRevSystemOut;
 
-    rampDecel = false;
-    currentFreqHz = START_FREQ_HZ;
+  rampDecel = false;
+  currentFreqHz = START_FREQ_HZ;
 
-    /*
+  /*
      * Temporary simple decel trigger:
      * begin decelerating near the end.
      *
      * We can make this mathematically precise later.
      */
-    uint32_t decelPulseCount =
-        pulsesPerRevSystemOut / 2;
+uint32_t decelPulseCount =
+  (uint32_t)(((RUN_FREQ_HZ + START_FREQ_HZ) / 2.0f)
+             * DECEL_TIME_S);
+  if (targetPulses > decelPulseCount)
+    decelStartPulse =
+      targetPulses - decelPulseCount;
+  else
+    decelStartPulse = 0;
 
-    if (targetPulses > decelPulseCount)
-        decelStartPulse =
-            targetPulses - decelPulseCount;
-    else
-        decelStartPulse = 0;
+  setMotorFrequency(currentFreqHz);
 
-    setMotorFrequency(currentFreqHz);
+  motorOn = true;
 
-    motorOn = true;
+  digitalWrite(MOTOR_PUL, LOW);
+  pulseLevel = LOW;
 
-    digitalWrite(MOTOR_PUL, LOW);
-    pulseLevel = LOW;
+  TCB0.CTRLA |= TCB_ENABLE_bm;
 
-    digitalWrite(MOTOR_ENA, HIGH);
-
-    TCB0.CTRLA |= TCB_ENABLE_bm;
-
-    interrupts();
+  interrupts();
 }
 
 void resumeMotion()
@@ -281,79 +280,85 @@ void resumeMotion()
 }
 
 
-void startJog()
-{
+void startJog() {
+  noInterrupts();
+
+  sentPulses = 0;
+  targetPulses = 0;
+
+  rampDecel = false;
+  currentFreqHz = START_FREQ_HZ;
+
+  setMotorFrequency(currentFreqHz);
+
+  motorOn = true;
+
+  digitalWrite(MOTOR_PUL, LOW);
+  pulseLevel = LOW;
+
+
+  TCB0.CTRLA |= TCB_ENABLE_bm;
+
+  interrupts();
+}
+
+void stopMotion() {
+  rampDecel = true;
+}
+
+void stopJog() {
+  rampDecel = true;
+}
+bool isMotorOn() {
+  return motorOn;
+}
+
+void setUpMotor() {
+  pinMode(MOTOR_PUL, OUTPUT);
+  pinMode(MOTOR_DIR, OUTPUT);
+
+  // Match the successful diagnostic sketch
+  pinMode(MOTOR_ENA, INPUT);
+
+  pinMode(MOTOR_ALM, INPUT);
+
+  digitalWrite(MOTOR_PUL, HIGH);
+  digitalWrite(MOTOR_DIR, LOW);
+
+  setupPulseTimer(65535);
+
+  RampTimer.initialize();
+  RampTimer.attachInterrupt(updateMotorRamp);
+  RampTimer.setPeriod(RAMP_UPDATE_US);
+}
+
+void finishStop() {
+  if (rotationJustCompleted) {
     noInterrupts();
-
-    sentPulses = 0;
-    targetPulses = 0;
-
-    rampDecel = false;
-    currentFreqHz = START_FREQ_HZ;
-
-    setMotorFrequency(currentFreqHz);
-
-    motorOn = true;
-
-    digitalWrite(MOTOR_PUL, LOW);
-    pulseLevel = LOW;
-
-    digitalWrite(MOTOR_ENA, HIGH);
-
-    TCB0.CTRLA |= TCB_ENABLE_bm;
-
+    rotationJustCompleted = false;
     interrupts();
-}
 
-void stopMotion()
-{
-    rampDecel = true;
-}
-
-void stopJog()
-{
-    rampDecel = true;
-}
-bool isMotorOn()
-{
-    return motorOn;
-}
-
-
-
-void setUpMotor()
-{
-    pinMode(MOTOR_PUL, OUTPUT);
-    pinMode(MOTOR_DIR, OUTPUT);
-    pinMode(MOTOR_ENA, OUTPUT);
-    pinMode(MOTOR_ALM, INPUT);
-
-    setupPulseTimer(65535);
-
-    RampTimer.initialize();
-    RampTimer.attachInterrupt(updateMotorRamp);
-    RampTimer.setPeriod(RAMP_UPDATE_US);
-}
-
-void finishStop()
-{
-    if (motorOn || !rampDecel)
-        return;
-
-    digitalWrite(MOTOR_ENA, LOW);
-
-    if (resetAfterStop)
-    {
-        motorRotations = 0;
-        setDisplayValue(0);
-        currentState = STATE_IDLE;
-    }
-    else if (currentState != STATE_PAUSE)
-    {
-        currentState = STATE_IDLE;
-    }
-
+    // Same reset behavior as the Stop button,
+    // without requesting another motor stop
+    motorRotations = 0;
+    setDisplayValue(0);
+    currentState = STATE_IDLE;
     currentFreqHz = START_FREQ_HZ;
     rampDecel = false;
     resetAfterStop = false;
+    return;
+  }
+  if (motorOn || !rampDecel)
+    return;
+
+
+  if (resetAfterStop) {
+    motorRotations = 0;
+    setDisplayValue(0);
+  }
+
+  currentState = STATE_IDLE;
+  currentFreqHz = START_FREQ_HZ;
+  rampDecel = false;
+  resetAfterStop = false;
 }

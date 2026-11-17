@@ -4,17 +4,17 @@
 
 // Button Pins (comment/uncomment corresponding section depending on what version is used)
 
-// ORIGNAL SHAFT ROTATOR BOARD PINS (buttons cannot be assigned to pin 5, wiring/connection issue present)
-constexpr uint8_t PIN_UP = 2;
-constexpr uint8_t PIN_DOWN = 3;
-constexpr uint8_t PIN_JOG = 6;
-constexpr uint8_t PIN_START_PAUSE_STOP = 4; // aligns to button labeled +5  on rotater
+// ORIGNAL SHAFT ROTATOR BOARD PINS (buttons cannot be assigned to pin 5 on the og board, wiring/connection issue present)
+// constexpr uint8_t PIN_UP = 2;
+// constexpr uint8_t PIN_DOWN = 3;
+// constexpr uint8_t PIN_JOG = 6;
+// constexpr uint8_t PIN_START_PAUSE_STOP = 4; // aligns to button labeled +5  on rotater
 
-// // NEW SHAFT ROTATOR BOARD PINS
-// constexpr uint8_t PIN_UP = 2;               // SW3 on PCB
-// constexpr uint8_t PIN_DOWN = 5;             // SW2 on PCB
-// constexpr uint8_t PIN_JOG = 4;              // SW1 on PCB
-// constexpr uint8_t PIN_START_PAUSE_STOP = 3; // SW4 on PCB
+// // NEW SHAFT ROTATOR PCB BOARD PINS
+constexpr uint8_t PIN_UP = 2;               // SW3 on PCB
+constexpr uint8_t PIN_DOWN = 5;             // SW2 on PCB
+constexpr uint8_t PIN_JOG = 4;              // SW1 on PCB
+constexpr uint8_t PIN_START_PAUSE_STOP = 3; // SW4 on PCB
 
 
 // Button timing
@@ -42,11 +42,11 @@ constexpr unsigned long ROT_CHANGE_FAST_MS = 80;   // change by 1 every 80ms
 
 
 
-constexpr int STATUS_LED_PIN = 7;
+constexpr int STATUS_LED_PIN = 13;
 constexpr int DEBUG_LED_PIN = 13;
 
 // Battery Constants
-const int BAT_PIN = A7;
+const int BAT_PIN = A0;
 const float R1 = 100000.0;
 const float R2 = 20000.0;
 const uint32_t ADC_REF_mV = 5000;

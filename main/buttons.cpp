@@ -13,24 +13,26 @@ OneButton buttonStart(PIN_START_PAUSE_STOP, true);
 
 struct ButtonInfo {
   OneButton *button;
-  int direction;   // +1 to increase target rotations, -1 to decrease
+  int direction;  // +1 to increase target rotations, -1 to decrease
 };
 
 ButtonInfo upInfo = { &buttonUp, 1 };
 ButtonInfo downInfo = { &buttonDown, -1 };
 
 void jogButtonStart() {
-  handleEvent(EVT_JOG_START);
+    // digitalWrite(LED_BUILTIN, HIGH);
+    handleEvent(EVT_JOG_START);
 }
 
 void jogButtonStop() {
-  handleEvent(EVT_JOG_STOP);
+    // digitalWrite(LED_BUILTIN, LOW);
+    handleEvent(EVT_JOG_STOP);
 }
 
 void toggleStartPause() {
-  digitalWrite(13, HIGH);
-  delay(200);
-  digitalWrite(13, LOW);
+  // digitalWrite(13, HIGH);
+  // delay(200);
+  // digitalWrite(13, LOW);
 
   handleEvent(EVT_START_PAUSE);
 }
@@ -50,10 +52,10 @@ void rotDirection(bool polarity) {
     handleEvent(EVT_DEC_1);
   }
 }
-
-void changeRot(void *context) {  // change target rotations by 1
+void changeRot(void *context) {
   ButtonInfo *info = (ButtonInfo *)context;
-  rotDirection(info->direction == 1);  // true = increase, false = decrease
+
+  rotDirection(info->direction == 1);
 }
 
 void startAccelRotChange(void *context) {
@@ -63,8 +65,8 @@ void startAccelRotChange(void *context) {
 void whileAccelRotChange(void *context) {
   ButtonInfo *info = (ButtonInfo *)context;
   unsigned long buttonHeldMs = info->button->getPressedMs();  //  time button has been held
-  unsigned long now = millis();                           
-  unsigned long timeBetweenRotValueChangesMs;                 // Current repeat interval
+  unsigned long now = millis();
+  unsigned long timeBetweenRotValueChangesMs;  // Current repeat interval
 
   // Speed up rotation changes the longer the button is held
   if (buttonHeldMs < ACCEL_STAGE_1_END_MS) {
