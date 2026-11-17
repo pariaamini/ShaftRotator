@@ -28,3 +28,4 @@ void handleEvent(Event event);
 const char *getStateText();
 
 void setupStatusLEDs();
+void updateStatusLED();

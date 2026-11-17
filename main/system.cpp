@@ -50,6 +50,7 @@ void handleEvent(Event e) {
       setDisplayValue(0);
       resetAfterStop = true;
       stopMotion();
+      currentState = STATE_IDLE;
       break;
 
     case EVT_JOG_START:
@@ -60,9 +61,17 @@ void handleEvent(Event e) {
       }
       break;
 
+      // case EVT_JOG_STOP:
+      // if (currentState == STATE_JOG) {
+      //     stopJog();
+      //     currentState = STATE_IDLE;
+      // }
+      // break;
+
     case EVT_JOG_STOP:
       if (currentState == STATE_JOG) {
-        stopJog();  // this should start deceleration
+        stopJog();  // Begin deceleration
+        // Remain in STATE_JOG until deceleration finishes
       }
       break;
 
@@ -75,7 +84,14 @@ void handleEvent(Event e) {
 }
 
 void setupStatusLEDs() {
-  pinMode(STATUS_LED_PIN, OUTPUT);
-  digitalWrite(STATUS_LED_PIN, LOW);
-  pinMode(DEBUG_LED_PIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+}
+
+void updateStatusLED() {
+  if (currentState == STATE_RUN) {
+    digitalWrite(LED_BUILTIN, HIGH);
+  } else {
+    digitalWrite(LED_BUILTIN, LOW);
+  }
 }

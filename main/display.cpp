@@ -8,8 +8,6 @@
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled(
   U8G2_R0,
-  SCL,
-  SDA,
   U8X8_PIN_NONE);
 
 
@@ -62,7 +60,7 @@ void setDisplayValue(int value) {  // display value setter
   updateDisplay();
 }
 
-void refreshDisplayValue() {  // runs periodically in main.
+void refreshDisplayValue() {
   if (temporaryDisplayActive) {
     if (millis() - temporaryDisplayStartMs >= temporaryDisplayDurationMs) {
       temporaryDisplayActive = false;
@@ -78,7 +76,7 @@ void refreshDisplayValue() {  // runs periodically in main.
   if (currentState == STATE_RUN) {
     setDisplayValue(getRotationsRemaining());
   }
-}
+}   
 
 void showTemporaryValue(int value, unsigned long durationMs) {
   valueBeforeTemporary = displayValue;

@@ -5,13 +5,16 @@
 #include "battery.h"
 
 void setup() {
+    Serial.begin(115200);
+
   setupStatusLEDs();
 
   setupDisplay();
   setupButtons();
   setupBattery();
   setUpMotor();
-  showTemporaryValue(99, 2000);
+  showBatteryPercentage();
+  // showTemporaryValue(99, 2000);
 
   digitalWrite(STATUS_LED_PIN, HIGH);
 }
@@ -19,5 +22,6 @@ void loop() {
   updateButtons();
   refreshDisplayValue();
   finishStop();
-  digitalWrite(DEBUG_LED_PIN, isMotorOn() ? HIGH : LOW);
+  // digitalWrite(DEBUG_LED_PIN, isMotorOn() ? HIGH : LOW);
+  updateStatusLED();
 }

@@ -20,17 +20,19 @@ ButtonInfo upInfo = { &buttonUp, 1 };
 ButtonInfo downInfo = { &buttonDown, -1 };
 
 void jogButtonStart() {
-  handleEvent(EVT_JOG_START);
+    // digitalWrite(LED_BUILTIN, HIGH);
+    handleEvent(EVT_JOG_START);
 }
 
 void jogButtonStop() {
-  handleEvent(EVT_JOG_STOP);
+    // digitalWrite(LED_BUILTIN, LOW);
+    handleEvent(EVT_JOG_STOP);
 }
 
 void toggleStartPause() {
-  digitalWrite(13, HIGH);
-  delay(200);
-  digitalWrite(13, LOW);
+  // digitalWrite(13, HIGH);
+  // delay(200);
+  // digitalWrite(13, LOW);
 
   handleEvent(EVT_START_PAUSE);
 }

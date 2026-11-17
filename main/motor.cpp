@@ -22,7 +22,7 @@ volatile uint32_t targetPulses = 0;
 volatile uint32_t decelStartPulse = 0;
 
 volatile bool rampDecel = false;
-
+volatile bool rotationJustCompleted = false;
 // ================= MOTOR SPEED SETTINGS =================
 
 // Motor pulse frequency at startup
@@ -55,11 +55,16 @@ constexpr float ACCEL_STEP_HZ =
 constexpr float DECEL_STEP_HZ =
   (RUN_FREQ_HZ - START_FREQ_HZ) * RAMP_UPDATE_S / DECEL_TIME_S;
 
-// Motor pins
-const int MOTOR_PUL = 9;   // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
-const int MOTOR_DIR = 10;  // Pin for motor DIR-
-const int MOTOR_ENA = 11;  // Pin for motor ENA-     HIGH for motor on
-const int MOTOR_ALM = 27;  // Pin for motor ALM-     INPUT PIN
+// // Motor pins
+// const int MOTOR_PUL = 9;   // Pin for motor PUL-     LOW for pulse return to HIGH for idle state
+// const int MOTOR_DIR = 10;  // Pin for motor DIR-
+// const int MOTOR_ENA = 11;  // Pin for motor ENA-     HIGH for motor on
+// const int MOTOR_ALM = 27;  // Pin for motor ALM-     INPUT PIN
+
+const int MOTOR_PUL = 6;
+const int MOTOR_DIR = 7;
+const int MOTOR_ENA = 8;
+const int MOTOR_ALM = 27;
 
 int getRotationsRemaining() {  // Return how many more rotations are left. This is to be displayed and will be shown as a rounded integer
   // Pulse Counter Based
@@ -99,13 +104,17 @@ ISR(TCB0_INT_vect) {  // This has to trigger twice to get 1 pulse
       rampDecel = true;
     }
 
+    // if (sentPulses >= targetPulses) {
+    //   motorOn = false;
+    //   currentState = STATE_IDLE;
+    //   motorRotations = 0;
+    //   TCB0.CTRLA &= ~TCB_ENABLE_bm;
+    // }
     if (sentPulses >= targetPulses) {
       motorOn = false;
-      currentState = STATE_IDLE;
-      setDisplayValue(0);
-      motorRotations = 0;
+      rotationJustCompleted = true;
+
       TCB0.CTRLA &= ~TCB_ENABLE_bm;
-      digitalWrite(MOTOR_ENA, LOW);
     }
   }
 
@@ -146,22 +155,27 @@ void updateMotorRamp() {
   }
 
   // DECELERATION
-  if (rampDecel) {
-    currentFreqHz -= DECEL_STEP_HZ;
+ if (rampDecel) {
+  currentFreqHz -= DECEL_STEP_HZ;
 
-    if (currentFreqHz <= START_FREQ_HZ) {
-      currentFreqHz = START_FREQ_HZ;
+  if (currentFreqHz <= START_FREQ_HZ) {
+    currentFreqHz = START_FREQ_HZ;
 
-      motorOn = false;
-      TCB0.CTRLA &= ~TCB_ENABLE_bm;
-
+    if (currentState == STATE_RUN && !resetAfterStop) {
+      // Continue at minimum speed until target is reached.
+      // Never restart acceleration.
+      setMotorFrequency(currentFreqHz);
       return;
     }
 
-    setMotorFrequency(currentFreqHz);
+    motorOn = false;
+    TCB0.CTRLA &= ~TCB_ENABLE_bm;
     return;
   }
 
+  setMotorFrequency(currentFreqHz);
+  return;
+}
   // NORMAL ACCELERATION
   // ================= RUN =================
   if (currentState == STATE_RUN) {
@@ -201,9 +215,9 @@ void startMotion(uint32_t outputRevs) {
      *
      * We can make this mathematically precise later.
      */
-  uint32_t decelPulseCount =
-    pulsesPerRevSystemOut / 2;
-
+uint32_t decelPulseCount =
+  (uint32_t)(((RUN_FREQ_HZ + START_FREQ_HZ) / 2.0f)
+             * DECEL_TIME_S);
   if (targetPulses > decelPulseCount)
     decelStartPulse =
       targetPulses - decelPulseCount;
@@ -216,8 +230,6 @@ void startMotion(uint32_t outputRevs) {
 
   digitalWrite(MOTOR_PUL, LOW);
   pulseLevel = LOW;
-
-  digitalWrite(MOTOR_ENA, HIGH);
 
   TCB0.CTRLA |= TCB_ENABLE_bm;
 
@@ -240,7 +252,6 @@ void startJog() {
   digitalWrite(MOTOR_PUL, LOW);
   pulseLevel = LOW;
 
-  digitalWrite(MOTOR_ENA, HIGH);
 
   TCB0.CTRLA |= TCB_ENABLE_bm;
 
@@ -261,8 +272,14 @@ bool isMotorOn() {
 void setUpMotor() {
   pinMode(MOTOR_PUL, OUTPUT);
   pinMode(MOTOR_DIR, OUTPUT);
-  pinMode(MOTOR_ENA, OUTPUT);
+
+  // Match the successful diagnostic sketch
+  pinMode(MOTOR_ENA, INPUT);
+
   pinMode(MOTOR_ALM, INPUT);
+
+  digitalWrite(MOTOR_PUL, HIGH);
+  digitalWrite(MOTOR_DIR, LOW);
 
   setupPulseTimer(65535);
 
@@ -272,10 +289,24 @@ void setUpMotor() {
 }
 
 void finishStop() {
+  if (rotationJustCompleted) {
+    noInterrupts();
+    rotationJustCompleted = false;
+    interrupts();
+
+    // Same reset behavior as the Stop button,
+    // without requesting another motor stop
+    motorRotations = 0;
+    setDisplayValue(0);
+    currentState = STATE_IDLE;
+    currentFreqHz = START_FREQ_HZ;
+    rampDecel = false;
+    resetAfterStop = false;
+    return;
+  }
   if (motorOn || !rampDecel)
     return;
 
-  digitalWrite(MOTOR_ENA, LOW);
 
   if (resetAfterStop) {
     motorRotations = 0;
